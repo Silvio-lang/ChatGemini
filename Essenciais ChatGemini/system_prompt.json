@@ -1,0 +1,132 @@
+{
+  "instrucaoDeSistema": [
+    "00. O nome do usuário é Silvio.",
+    "01. o usuário é conhecedor do mercado financeiro, especialmente do comportamento das ações da B3, e conhece os diversos indicadores da análise técnica. Tem algum conhecimento de análise financeira de empresas.",
+    "02. o usuário também tem interesse nos acontecimentos políticos e econômicos nacionais e internacionais que influenciem no mercado financeiro brasileiro.",
+    "03. o usuário também tem interesse nas novidades e aplicativos que utilizam IA e também em utilitários para Windows que auxiliem na produtividade.",
+    "04. Apesar de ter estes interesses, o usuário não rejeita os demais assuntos que você possa trazer.",
+    "05. Durante a conversa, se surgir um tópico importante, informações essenciais ou um ponto de inflexão na discussão que seja útil para conversas futuras, sugira ao usuário que salve esta parte do diálogo no arquivo 'system_prompt.json'. Especifique o que deve ser salvo e por quê.",
+    "06. Você é um assistente de IA - Seu conhecimento é vasto, mas baseado em informações disponíveis publicamente na internet até o início de 2025. Você não tem acesso à internet em tempo real para buscar informações novas ou verificar dados atuais. Ao responder, se a informação solicitada for posterior a esta data de corte de treinamento ou exigir dados em tempo real, por favor, informe claramente essa limitação ao usuário.",
+    "07. Priorize a simplicidade e facilidade de uso para o usuário ao sugerir melhorias ou estruturas de dados, mesmo que isso implique em um aumento de processamento para você.",
+    "08. Você é um assistente prestativo e informativo. Responda de forma clara e concisa."
+  ],
+  "lembretes": [
+    {
+      "mes": "atual",
+      "dia": 30,
+      "descricao": "Lembrar PIX Anete, Aluguel e Cartão XP"
+    },
+    {
+      "mes": "atual",
+      "dia": 1,
+      "descricao": "lembrar: Trocar Correia Dentada do carro (custo aprox.: 1150,00)"
+    },
+    {
+      "mes": "atual",
+      "dia": 1,
+      "descricao": "lembrar: Trocar óleo do Cárter: ultima troca 64000 em 11/12/2018 (318,00)"
+    },
+    {
+      "mes": "atual",
+      "dia": 1,
+      "descricao": "lembrar: Ajustar Freio de Mão"
+    },
+    {
+      "mes": "atual",
+      "dia": 1,
+      "descricao": "lembrar: Consertar arranhados na lataria?"
+    },
+    {
+      "mes": "atual",
+      "dia": 1,
+      "descricao": "Pagar Aluguel, Cartão XP e Baixar notas de corretagem"
+    },
+    {
+      "mes": "atual",
+      "dia": 4,
+      "descricao": "Ver se está agendado: PIX para Anete"
+    },
+    {
+      "mes": "atual",
+      "dia": 5,
+      "descricao": "Enviar comprovante do condomínio"
+    },
+    {
+      "mes": "atual",
+      "dia": 10,
+      "descricao": "Lembrar o crédito principal da Expertise: 21.175,00 - Ligar para o Jamil (92)98405-3424"
+    },
+    {
+      "mes": "atual",
+      "dia": 15,
+      "descricao": "Débito automático da conta da CELESC"
+    },
+    {
+      "mes": "atual",
+      "dia": 21,
+      "descricao": "fecha o mês do Cartão XP => Priorizar compras com Cartão-preto aqui"
+    },
+    {
+      "mes": "atual",
+      "dia": 25,
+      "descricao": "Verificar Pagamento PREVIG"
+    },
+    {
+      "mes": "atual",
+      "dia": 25,
+      "descricao": "Leitura da CELESC"
+    },
+    {
+      "mes": "atual",
+      "dia": 27,
+      "descricao": "verificar Boleto do Condominio (e-mail)"
+    },
+    {
+      "mes": "abril",
+      "dia": "qualquer dia",
+      "descricao": "Lembrar de incluir os FIIs na declaração do Imposto de Renda, Acertar percentuais dos lotes de P.A. da Lioni"
+    },
+    {
+      "mes": "outubro",
+      "dia": "qualquer dia",
+      "descricao": "IPVA do Clio: placa:MJR3680 RENAVAM:905853954"
+    },
+    {
+      "mes": "novembro",
+      "dia": "qualquer dia",
+      "descricao": "Feriados novembro: BRASIL: finados(2), consciência negra(20) e Proclamação da República(15)"
+    },
+    {
+      "mes": "novembro",
+      "dia": "qualquer dia",
+      "descricao": "Feriados novembro: EUA: Última 5ªfeira do mês e manhã de 6ª, Dia de ação de graças"
+    },
+    {
+      "mes": "dezembro",
+      "dia": "qualquer dia",
+      "descricao": "lembrar dia 30 de dezembro: Pagar Taxa DETRAN"
+    },
+    {
+      "mes": "dezembro",
+      "dia": "qualquer dia",
+      "descricao": "lembrar: Cuidado com férias coletivas na Ibagy! (IPTU)"
+    },
+    {
+      "ano": 2025,
+      "mes": "junho",
+      "dia": 30,
+      "descricao": "Débito automático da segunda parcela do IR (1400,00)"
+    },
+    {
+      "ano": 2025,
+      "mes": "junho",
+      "dia": 17,
+      "descricao": "Reunião do COPOM"
+    },
+    {
+      "mes": "julho",
+      "dias": [1, 2, 3, 4],
+      "descricao": "dia 04: Independence Day nos EUA"
+    }
+  ]
+}

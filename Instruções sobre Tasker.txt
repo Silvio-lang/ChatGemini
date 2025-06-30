@@ -1,0 +1,159 @@
+O Android oferece aos usuários a liberdade absoluta de personalizar e otimizar o dispositivo livremente. Você pode modificar tudo, desde sua aparência, seus  aplicativos principais, sua dependência do Google e tudo mais. Para isso, Tasker é um  aplicativo Android que permite automatizar as funções do seu telefone. Veja como você pode configurar e usar o Tasker no Android para automatizar seu telefone.
+
+Obtendo Tasker
+
+
+Índice
+Obtendo Tasker
+Modo iniciante
+Etapa 1 – Criação de uma tarefa
+Etapa 2 – Construindo um Perfil
+Etapa 3 – Criação de cenas
+Experimente você mesmo
+Tasker é um aplicativo pago que custa míseros US $ 3,99 na Play Store. No entanto, você pode baixar uma versão de teste do Site da Tasker que expira em 15 dias. Enquanto estiver no modo de teste, acessar o Tasker – mesmo alternando entre aplicativos abertos – pergunta se você deseja continuar o teste ou registrar-se.
+
+Modo iniciante
+Como configurar e usar o Tasker no Android 2
+
+
+Tasker é bastante versátil, para evitar que os usuários fiquem sobrecarregados, começamos no modo iniciante. Você é dado Perfis, Tarefas e Cenas (acessar cada guia informa o que ela faz). Tocar em cada um pode dar a você a opção de importar um perfil / Tarefa / Cena.
+
+
+Tocar no botão adicionar (+) no canto inferior direito criará uma nova entrada. Pressionar o botão de seta Voltar no canto superior esquerdo de uma visualização salvará e sairá. Pressionar o botão de cruz no canto superior direito cancelará a operação.
+
+É importante notar que o aplicativo não é tão simples quanto o IFTTT, onde você pode apenas selecionar algumas personalizações pré-construídas. O Tasker permite que você vá muito mais fundo do que isso e, como tal, requer que você crie seus próprios perfis e defina como seu dispositivo Android deve se comportar.
+
+
+Para desligar o modo iniciante; Vamos para Cardápio (canto superior direito)> Preferências > Desmarque o modo iniciante
+
+
+Não recomendamos fazer isso até que você tenha entendido Tasker um pouco melhor. Desativar o modo iniciante apresentará uma nova guia chamada Vars.
+
+Etapa 1 – Criação de uma tarefa
+Como configurar e usar o Tasker no Android 3
+
+
+Mesmo que um Perfil seja a primeira guia, começamos com Tarefas, pois elas são a espinha dorsal deste aplicativo. Criaremos tarefas para uma lista de coisas que queremos ver acontecer quando acordarmos.
+
+Portanto, toque no botão + no canto inferior direito e dê um nome a ele e, em seguida, pressione o botão Marcar. Agora, toque no ícone + para adicionar ações que serão realizadas nesta tarefa.
+
+
+Partindo do princípio de que queremos que nosso telefone desligue o modo silencioso e ligue o Wi-Fi ao acordar, fazemos o seguinte:
+
++ > Áudio > Volume da campainha
+
++ > Rede> Wi-fi > Sobre
+
+Agora temos duas ações para esta tarefa.
+
+
+Lembre-se de que, no momento, não dissemos ao Tasker quando queremos que este aplicativo seja executado, apenas ensinamos a ele o que fazer. Podemos pressionar o botão Play no canto inferior esquerdo para executá-lo manualmente, ou até mesmo adicionar um widget na tela inicial (ele irá perguntar qual perfil você deseja carregar). Tocar nesse widget iniciará a referida tarefa.
+
+No entanto, isso não é tão empolgante quanto a promessa de automação completa. Portanto, agora devemos vinculá-lo a um gatilho (ou contexto, como Tasker o chama). Algo que desencadeia esses eventos automaticamente. Para definir um Contexto, devemos construir um perfil.
+
+Etapa 2 – Construindo um Perfil
+Como configurar e usar o Tasker no Android 4
+
+Tasker pode ter vários perfis, dependendo do que você pretende fazer. Vá para a guia Perfil e selecione o aplicativo / serviço no qual deseja que a operação seja realizada. Toque no ícone + no canto inferior direito e selecione seu contexto.
+
+
+Em extensão do nosso exemplo acima, criamos nossas ações para desencadear quando acordamos. Podemos atribuir um tempo específico para as tarefas serem acionadas. Toque no botão de adição + > Tempo > De para Intervalo (toque em cada se quiser que ocorra em uma programação).
+
+Alternativamente, se você tiver horários de ativação variáveis, então você deseja que essas ações sejam disparadas sempre que você acordar, para que possamos fazer com que nosso contexto seja o alarme disparado. Tocar +> Evento> Data / Hora> Alarme Concluído
+
+Quando solicitado, selecione a tarefa criada na etapa 1.
+
+Isso significa que sempre que você terminar de ativar um alarme, esses eventos serão acionados. Assim, você pode definir sua hora de despertar todas as vezes e fazer com que as mesmas tarefas sejam executadas todas as vezes.
+
+Etapa 3 – Criação de cenas
+Como configurar e usar o Tasker no Android 5
+
+Scenes in Tasker é se você deseja criar sua própria interface de usuário ou diálogos pop-up. Você pode aprender a criá-los mesmo que nunca tenha criado interfaces antes. Deixe-nos criar um e você poderá lançar quantos quiser a partir desse ponto.
+
+Pressione o botão + para criar uma nova cena. Vamos criar uma cena que nos mostra quem nos enviou um e-mail com qual linha de assunto.
+
+Quando uma nova cena é criada, você ajusta o tamanho da tela geral. Depois de ajustado, você pode alterar sua cor a partir do botão de menu no canto superior direito, toque no + abaixo para adicionar elementos. Queremos duas caixas de texto (uma para quem enviou a mensagem e outra para o corpo). Por último, queremos adicionar um botão que diz “Concluído” para que possamos fechar a cena.
+
+Então pressione +> Texto
+
+Abaixo do nome, nomeie qualquer coisa que seja fácil para você lembrar mais tarde.
+
+Agora, sob o texto, você pode escrever um texto real ou chamar a partir de uma lista de variáveis ​​embutidas. Em nosso caso, chamaremos a variável “Text Sender” e outra caixa de texto para a variável “Text Body”. Uma vez feito isso, crie um botão “concluído” que irá “destruir” ao tocar.
+
+Agora, esta é apenas a cena, sem um gatilho, nem uma tarefa. Portanto, crie uma Tarefa que “Mostra a Cena” e um Perfil que acione essa tarefa (conforme mencionado nas etapas 1 e 2) e o  aplicativo estará pronto.
+
+Experimente você mesmo
+A melhor parte do Tasker é que você não pode danificar seu  telefone, não importa o que faça. Portanto, sinta-se à vontade para experimentar diferentes definições e configurações para ver qual delas otimiza melhor o seu dispositivo para você. A melhor coisa é, uma vez que você se acostumar com isso, você pode até criar aplicativos através do Tasker que seus amigos podem usar em seus próprios serviços Tasker personalizados que você prepara para eles.
+
+=======================================================================================
+
+O que é Tasker e como usá-lo para criar uma tarefa?
+byBarış Selman  10/11/2021 in Android, How to, Tech Reading Time: 5 mins read
+Hoje vamos revisar o que é Tasker e mostrar como usá-lo para criar uma tarefa no Android. Embora as rotinas do Google Assistant sejam uma indicação de quão inteligente o Android está se tornando, não há nada como o Tasker, o software lendário originalmente lançado há quase uma década, quando se trata de automação de tarefas no Android.
+
+Se você já ouviu falar do Tasker, mas não tem certeza de como começar a usá-lo, orientaremos você nas primeiras etapas para que possa automatizar tarefas como um profissional.
+
+O que é Tasker?
+Tasker é a forma mais completa de automatizar comandos no Android. Não é extremamente complexo utilizá-lo em um nível básico, embora para aproveitá-lo ao máximo – o que é muito – seja necessário gastar algum tempo.
+
+É um aplicativo pago, atualmente com preço de $ 3,49, embora você tenha uma versão de avaliação de sete dias disponível em seu site.
+
+Observe que o Tasker em si é apenas o mecanismo principal, mas existem outros aplicativos de suporte que adicionam mais recursos e que você pode baixar do Google Play (nota: alguns precisam ser adquiridos separadamente). Existem dezenas deles:
+
+Configurações do Tasker: Você pode usar isso para poder alterar mais opções do sistema do Tasker.
+AutoVoice: Você pode usar este plugin para Tasker para adicionar funções de controle de voz.
+AutoInput: Você pode usar isso para simular tocar ou digitar texto com Tasker.
+AutoCast: você pode usar isso para se comunicar com o Chromecast.
+Notificação automática: você pode usar esta opção para interagir e criar notificações.
+AutoLocation: Você pode usar esta opção para dar a Tasker a capacidade de reconhecer se você está caminhando, andando de bicicleta ou em um veículo, bem como em qual local.
+AutoShare: você pode usar isso para interagir com o menu de compartilhamento do Android.
+Tasker App Factory: você pode usar esta ferramenta para exportar projetos como aplicativos independentes.
+  Como cancelar uma assinatura do Twitch no Android, iPhone e PC?
+O que é Tasker e como usá-lo para criar uma tarefa?
+
+Como usar o Tasker?
+A primeira vez que você abre o Tasker é normal ficar um pouco confuso. O que agora? Existem quatro guias principais e não há muitas explicações sobre o que cada uma faz. Além disso, esta é uma opinião pessoal, mas os nomes de alguns de seus principais pilares não são totalmente explicativos e dão um pouco de confusão. Essas guias são:
+
+Perfis: perfis Tasker são configurações que vinculam tarefas a contextos.
+Contextos: são as condições para a execução das tarefas. Por exemplo, em um determinado momento, em um determinado local ou após o final de uma contagem regressiva.
+Tarefas: são as ações realizadas. Uma tarefa pode realizar várias ações.
+Cenas: Esta é uma interface de usuário gerada a partir do Tasker que você pode usar para exibir informações para ações após pressionar um botão ou semelhante.
+Variáveis: nomes para alterar os valores que você pode querer usar em algum lugar em suas tarefas, como o tempo ou o nível da bateria.
+Como criar um perfil no Tasker?
+Vamos começar criando uma configuração muito básica do Tasker que define o modo para não perturbe e reduz o brilho da tela à noite.
+
+  Lista de servidores Lost Ark: Qual deles é para você?
+Isso pode ser feito na página de perfis, tocando no botão flutuante. Primeiro, você deve escolher um nome de perfil. Selecione o contexto ou condição na lista suspensa. Em seguida, toque em Hora.
+
+Na próxima tela, escolha quando o perfil começa e termina. Não há botão de confirmação, então use o botão Voltar para continuar o processo.
+
+O que é Tasker e como usá-lo para criar uma tarefa?
+O que é Tasker e como usá-lo para criar uma tarefa?
+Como criar uma tarefa no Tasker?
+O perfil que você acabou de criar não faz absolutamente nada, então Tasker propõe que você crie uma nova tarefa diretamente. Clique no botão para iniciar o procedimento, que começa com a inserção de um nome para a tarefa, mas isso não é obrigatório.
+
+Isso o levará a uma janela vazia para a tarefa, então a primeira etapa é usar o botão flutuante para adicionar a primeira ação. Eles são organizados por categoria, portanto, para ajustar o brilho, você primeiro precisa entrar em Display e depois em Screen Brightness. Em seguida, você pode ajustar o brilho para o valor desejado, que no nosso caso é zero.
+
+Você pode adicionar várias ações à mesma tarefa e, como exemplo, vamos ativar o modo Não perturbe. Ele está localizado em Configurações de áudio – Não perturbe. Tasker precisa de permissão para acessar notificações para poder realizar esta ação.
+
+Volte para a janela anterior e você verá que suas duas ações foram adicionadas à tarefa. Se desejar, você pode testar se eles funcionam corretamente pressionando o botão play. Se você quiser fazer algum ajuste, toque na ação para editá-la.
+
+  O Android 12 se prepara para que os aplicativos sejam traduzidos automaticamente para o nosso idioma
+Digamos que definimos o horário de início para 20h e entramos no modo Não perturbe corretamente, mas o que acontece depois disso? Nada, a menos que o configuremos. Para isso, precisamos de uma tarefa de saída, algo como uma forma de retornar o sistema ao que era quando a condição não era mais atendida.
+
+O que é Tasker e como usá-lo para criar uma tarefa?
+Como criar uma tarefa de saída no Tasker?
+Para adicionar uma tarefa de saída, volte para a lista de perfis e toque naquele que você acabou de criar. Você verá então a opção Adicionar Tarefa de Saída, na qual você deve clicar e escolher a tarefa criada anteriormente. A diferença é que a tarefa de saída irá executá-la ao contrário, ou seja, desligará o modo Não Perturbe e retornará o brilho ao que era.
+
+Agora, tudo o que você precisa fazer é esperar para ver se tudo funciona corretamente. Se não quiser esperar até a noite, mude a hora para começar um pouco mais cedo para que você possa verificar se tudo está funcionando perfeitamente. Se tudo correr bem, o brilho será reduzido e o modo Não Perturbe será ativado automaticamente no horário definido.
+
+Veja também:
+Como transferir seus arquivos e fotos do Android para o Windows 10?
+Claro, esta é apenas a ponta do iceberg do que Tasker pode fazer. Como mencionamos antes, sua extensibilidade torna o aplicativo adequado para fazer quase tudo no Android, com bastante paciência e dedicação.
+
+Observações captadas com o uso:
+Uma estrutura típica para os projetos, seria:
+
+1.Perfil: É quase que o topo da estrutura: Assemelha-se a um título, que tipicamente será relacionado com um sinal de entrada não controlável pelo programa, e que vem de fora. Exemplos de sinais que o acionam: Horário, luminosidade, conexão de Wifi estabelecida, mensagem recebida, localização, e outros que serão listados mais abaixo. Mas há um tipo de entrada que é controlada pelo Tasker, e que pode ser uma entrada para o Perfil. São as variáveis!! Assim, pode-se fazer 'loops infinitos' dentro do programa. É bom tomar cuidado para evitar consumo da bateria. Para criar um Perfil, pressiona-se '+', em baixo à direita. Abre-se uma janela com diversas opções que podem iniciar um Perfil. Cada Perfil pode acionar mais de uma tarefa. Para editar o nome do Perfil, basta manter o toque por 1 segundo sobre seu nome e depois na letra 'A' no topo da página. Ao tocar por apenas 0.1 segundo no nome do Perfil, abre-se o campo para inserir uma Tarefa. Mesmo com tarefas já incluidas no Perfil, se mantivermos o toque por mais de 1 segundo em uma delas, pode-se criar outra tarefa acionada pelo Perfil. Ao tocar por apenas 0.1 segundo no nome da Tarefa aí, abre-se uma tela com as ações desta Tarefa. Não é a página de todas as Tarefas!
+
+2.Tarefa: Conjunto de ações executadas em sequência, numeradas, com um objetivo de conseguir-se um efeito imaginado. A tarefa apenas ativa estas sequencias de ações. Cada tarefa tem uma página que mostra sua sequencia de ações.

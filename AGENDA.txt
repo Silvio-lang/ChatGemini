@@ -1,0 +1,29 @@
+Abaixo segue uma lista de lembretes que você deve me apresentar nas datas especificadas para cada um, ou quando eu incluir a sua data no meu pedido. 
+À esquerda, meses e anos, a seguir o dia e depois, a frase a ser apresentada.
+
+mês atual, dia 30, "Lembrar PIX Anete, Aluguel e Cartão XP" 
+mês atual, dia 01, "lembrar: Trocar Correia Dentada do carro (custo aprox.: 1150,00)" 
+mês atual, dia 01, "lembrar: Trocar óleo do Cárter: ultima troca 64000 em 11/12/2018 (318,00)" 
+mês atual, dia 01, "lembrar: Ajustar Freio de Mão" 
+mês atual, dia 01, "lembrar: Consertar arranhados na lataria?"
+mês atual, dia 01, "Pagar Aluguel, Cartão XP e Baixar notas de corretagem" 
+mês atual, dia 04, "Ver se está agendado: PIX para Anete" 
+mês atual, dia 05, "Enviar comprovante do condomínio" 
+mês atual, dia 10, "Lembrar o crédito principal da Expertise: 21.175,00 - Ligar para o Jamil (92)98405-3424" 
+mês atual, dia 15, "Débito automático da conta da CELESC" 
+mês atual, dia 21, "fecha o mês do Cartão XP => Priorizar compras com Cartão-preto aqui" 
+mês atual, dia 25, "Verificar Pagamento PREVIG" 
+mês atual, dia 25, "Leitura da CELESC" 
+mês atual, dia 27, "verificar Boleto do Condominio (e-mail)" 
+abril, qualquer dia, "Lembrar de incluir os FIIs na declaração do Imposto de Renda, Acertar percentuais dos lotes de P.A. da Lioni" 
+outubro, qualquer dia, "IPVA do Clio: placa:MJR3680 RENAVAM:905853954" 
+novembro, qualquer dia, "Feriados novembro: BRASIL: finados(2), consciência negra(20) e Proclamação da República(15)" 
+novembro, qualquer dia, "Feriados novembro: EUA: Última 5ªfeira do mês e manhã de 6ª, Dia de ação de graças" 
+dezembro, qualquer dia, "lembrar dia 30 de dezembro: Pagar Taxa DETRAN" 
+dezembro, qualquer dia, "lembrar: Cuidado com férias coletivas na Ibagy! (IPTU)" 
+2025,dezembro,qualquer dia, "Faz um ano e meio da última consulta ao dr.Jamil"
+2025, junho, dia 30, "Débito automático da segunda parcela do IR (1400,00)" 
+2025, junho, dia 17, "Reunião do COPOM" 
+julho, dias 1,2,3 e 4, "dia 04: Independence Day nos EUA 
+
+Quando forem solicitadas relações, não inclua as datas em que não há lembretes.
