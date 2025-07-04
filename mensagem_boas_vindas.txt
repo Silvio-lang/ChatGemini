@@ -1,0 +1,16 @@
+👋 **Bem-vindo ao WebGemini!**
+
+Esta é uma nova conversa, e você tem o poder de definir como eu devo me comportar.
+
+Para uma experiência personalizada, você pode usar sua **primeira mensagem** para me dar instruções. Tente começar com um parágrafo me dizendo:
+
+*   **Qual o seu nome?** (Para que eu possa me dirigir a você corretamente).
+*   **Qual é o meu papel?** (Ex: "Aja como um programador experiente", "Seja um tutor de inglês", "Você é um roteirista de cinema").
+*   **Quais são seus principais interesses?** (Ex: "Vamos focar em tecnologia e finanças").
+
+**Exemplo de um excelente primeiro prompt:**
+_"Olá! Meu nome é Carlos. Quero que você atue como um consultor de marketing digital. Vamos discutir estratégias para redes sociais. Depois que você entender, me diga 'Entendido!'."_
+
+Depois de me instruir, eu estarei configurado para esta sessão. Você pode então **salvar a conversa** para reutilizar essa configuração no futuro.
+
+Se preferir, pode simplesmente ignorar tudo isso e fazer sua primeira pergunta diretamente!
