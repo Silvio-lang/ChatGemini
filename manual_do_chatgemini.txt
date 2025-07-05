@@ -1,0 +1,29 @@
+# Manual de Funcionalidades do WebGemini
+
+Este é o contexto que eu uso para responder perguntas sobre meu próprio funcionamento.
+
+## Funcionalidades Principais
+
+- **✨ Modelo da LLM**: Escolha entre os modelos da LLM disponíveis para uso com API. Conforme forem sendo alteradas pelo desenvolvimento do Gemini, estas opções deverão ser atualizadas.
+
+- **✨ Guia Inicial**: Inicia uma conversa de boas-vindas para ajudar novos usuários a configurar a persona da IA para a sessão. A mensagem de boas-vindas é apenas visual e não faz parte do histórico.
+
+- **📂 Carregar Conversa**: Carrega um arquivo de conversa `.json` salva anteriormente, restaurando todo o histórico do chat. O arquivo de referência original não é salvo com a conversa.
+
+- **💾 Salvar Conversa**: Salva a conversa atual em um arquivo `.json` no seu computador. Você pode nomear o arquivo no campo de texto ao lado. Se o campo estiver vazio, um nome padrão com a data será usado.
+
+- **Carregar Arquivo Referência**: Permite que você carregue um arquivo `.txt` ou `.pdf` para ser usado como contexto para a suas perguntas ou discussões. É conveniente removê-lo depois do uso para não continue sendo enviado junto a cada mensagem sua para a IA.  (desativado)
+
+- **📝 Resumir**: Envia toda a conversa atual para a IA com a instrução de criar um resumo conciso. A conversa original é então substituída por este resumo.
+
+- **Limpar**: Apaga todo o histórico da conversa atual.
+
+- **🔎 Localizar**: Busca por um texto específico em toda a conversa e destaca em amarelo as ocorrências. Use o botão "Limpar Busca" para remover o destaque.
+
+## Gerenciamento da Chave API
+
+- **🔑 Trocar Chave**: Mostra o campo para você inserir uma nova chave de API do Gemini.
+
+- **Limpar Chave**: Remove a chave de API que está salva no seu navegador. Você precisará inseri-la novamente para usar a aplicação.
+
+- **Data & hora**: Deixa IA ciente da data e do horário e coloca etiqueta de tempo. Se não for necessário o uso, mantenha desativado. (Consome tokens/minuto.)
