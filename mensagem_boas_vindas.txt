@@ -1,0 +1,20 @@
+👋 **Bem-vindo ao WebGemini!**
+
+Esta é uma nova conversa, e você tem o poder de definir como eu devo me comportar.
+
+Para uma experiência personalizada, você pode usar sua **primeira mensagem** para me dar instruções. Tente começar com um parágrafo me dizendo:
+
+*   **Seu nome** (Para que eu possa me dirigir a você corretamente).
+*   **Qual deve ser o meu papel** (Ex: "Aja como um programador experiente", "Seja um tutor de inglês", "Você é um roteirista de cinema").
+*   **Quais os principal interesses para esta conversa** (Ex: "Focar em tecnologia e finanças", "Carros elétricos: modelos e comparações, etc.").
+
+**Exemplo de um excelente primeiro prompt:**
+_"Olá! Meu nome é Carlos. Quero que você atue como um consultor de marketing digital. Vamos discutir estratégias para redes sociais. Depois que você entender, me diga 'Entendido!'."_
+
+Depois de me instruir, eu estarei configurado para esta sessão. Você pode então **salvar a conversa** para reutilizar essa configuração no futuro.
+
+**Dica:**  Para analisar ou discutir sobre um texto, você pode colá-lo diretamente no prompt, seguido de sua pergunta. Por exemplo:"Analisar o texto a seguir: [seu texto aqui]". Este texto poderá ser um documento técnico, um contrato, etc.  
+**😦Atenção:** Ao fazer isso, o texto que você colou se tornará parte permanente do histórico desta conversa e fará com que as próximas perguntas consumam mais tokens, deixando uma interação mais lenta e custosa.  
+Para **"reduzir o peso"** desse texto no histórico sem perder o fio da meada, use a função 📝 Resumir. Ela criará uma versão mais leve da conversa.  Depois de utilizá-lo, é conveniente você salvar a conversa e iniciar uma nova.
+
+Se preferir, pode simplesmente ignorar tudo isso e fazer sua primeira pergunta imediatamente!
