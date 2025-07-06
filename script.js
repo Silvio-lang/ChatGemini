@@ -1,4 +1,59 @@
+// --- SEÇÃO GLOBAL: Variáveis e Funções de Áudio ---
+// Colocamos aqui o que precisa ser acessível pelo HTML (onclick)
+let listaDeVozes = [];
+const synth = window.speechSynthesis;
+
+// Função para carregar as vozes do navegador. Essencial para compatibilidade móvel.
+function carregarVozes() {
+    listaDeVozes = synth.getVoices();
+}
+carregarVozes();
+if (synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = carregarVozes;
+}
+
+// Função para REPRODUZIR o áudio de uma mensagem
+function reproduzAudio(botao) {
+    paraAudio(); // Garante que qualquer áudio anterior pare.
+
+    const mensagemDiv = botao.closest('.mensagem');
+    const conteudo = mensagemDiv.querySelector('.conteudo-mensagem').textContent;
+
+    if (synth.speaking) {
+        console.error('O sintetizador já está falando.');
+        return;
+    }
+    if (conteudo) {
+        const utterance = new SpeechSynthesisUtterance(conteudo);
+
+        utterance.onerror = function(event) {
+            console.error('Erro na síntese de voz:', event.error);
+            alert('Ocorreu um erro ao tentar reproduzir o áudio. Seu navegador pode não ser compatível.');
+        };
+
+        // Procura por uma voz em português do Brasil para maior confiabilidade
+        const vozBrasileira = listaDeVozes.find(voz => voz.lang === 'pt-BR');
+        if (vozBrasileira) {
+            utterance.voice = vozBrasileira;
+        }
+
+        synth.speak(utterance);
+    }
+}
+
+// Função para PARAR qualquer áudio em reprodução
+function paraAudio() {
+    if (synth.speaking) {
+        synth.cancel();
+    }
+}
+// --- FIM DA SEÇÃO GLOBAL ---
+
+
+// --- LÓGICA PRINCIPAL DA APLICAÇÃO ---
+// Este código só roda depois que o HTML estiver completamente carregado
 document.addEventListener('DOMContentLoaded', () => {
+    // Mapeamento dos elementos do HTML
     const apiKeyInput = document.getElementById('api-key');
     const salvarChaveBtn = document.getElementById('salvar-chave');
     const promptUsuarioInput = document.getElementById('prompt-usuario');
@@ -15,43 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let apiKey = '';
     let conversa = [];
 
-    // --- PARTE 1: INICIALIZAÇÃO DO SINTETIZADOR DE VOZ (NOVO) ---
-    // Esta seção garante que as vozes do navegador estejam prontas antes de tentarmos usá-las.
-    // Isso é crucial para a compatibilidade com navegadores móveis.
-    let listaDeVozes = [];
-    const synth = window.speechSynthesis;
-
-    function carregarVozes() {
-        listaDeVozes = synth.getVoices();
-    }
-    carregarVozes();
-    if (synth.onvoiceschanged !== undefined) {
-        synth.onvoiceschanged = carregarVozes;
-    }
-    // --- FIM DA PARTE 1 ---
-
-    function carregarChave() {
-        const chaveSalva = localStorage.getItem('geminiApiKey');
-        if (chaveSalva) {
-            apiKeyInput.value = chaveSalva;
-            apiKey = chaveSalva;
-            apiKeyInput.style.backgroundColor = '#d4edda';
-        }
-    }
-
-    function salvarChave() {
-        apiKey = apiKeyInput.value.trim();
-        if (apiKey) {
-            localStorage.setItem('geminiApiKey', apiKey);
-            apiKeyInput.style.backgroundColor = '#d4edda';
-            alert('Chave de API salva no armazenamento local do navegador.');
-        } else {
-            localStorage.removeItem('geminiApiKey');
-            apiKeyInput.style.backgroundColor = '#f8d7da';
-            alert('Chave de API removida.');
-        }
-    }
-    
+    // Função para adicionar uma nova mensagem na tela
     function adicionarMensagem(remetente, texto) {
         const mensagemDiv = document.createElement('div');
         mensagemDiv.classList.add('mensagem', `${remetente}-mensagem`);
@@ -72,6 +91,31 @@ document.addEventListener('DOMContentLoaded', () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
+    // Função para carregar a chave de API do armazenamento local
+    function carregarChave() {
+        const chaveSalva = localStorage.getItem('geminiApiKey');
+        if (chaveSalva) {
+            apiKeyInput.value = chaveSalva;
+            apiKey = chaveSalva;
+            apiKeyInput.style.backgroundColor = '#d4edda';
+        }
+    }
+
+    // Função para salvar a chave de API
+    function salvarChave() {
+        apiKey = apiKeyInput.value.trim();
+        if (apiKey) {
+            localStorage.setItem('geminiApiKey', apiKey);
+            apiKeyInput.style.backgroundColor = '#d4edda';
+            alert('Chave de API salva no armazenamento local do navegador.');
+        } else {
+            localStorage.removeItem('geminiApiKey');
+            apiKeyInput.style.backgroundColor = '#f8d7da';
+            alert('Chave de API removida.');
+        }
+    }
+    
+    // Função principal para enviar a mensagem para a API do Gemini
     async function enviarMensagem() {
         const prompt = promptUsuarioInput.value.trim();
         if (!prompt) return;
@@ -108,12 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 dataHoraInfo = `(Data e hora atual para sua referência: ${agora.toLocaleString('pt-BR')}) `;
             }
 
-            const historicoParaEnvio = conversa.map(item => {
-                if (item.role === 'user') {
-                    return { role: 'user', parts: [{ text: dataHoraInfo + item.parts[0].text }] };
-                }
-                return item;
-            });
+            // Clona o histórico para não modificar o original com a data/hora
+            const historicoParaEnvio = JSON.parse(JSON.stringify(conversa));
+            // Adiciona a data/hora apenas na última mensagem do usuário a ser enviada
+            const ultimaMensagemUsuario = historicoParaEnvio[historicoParaEnvio.length - 1];
+            if (ultimaMensagemUsuario.role === 'user') {
+                ultimaMensagemUsuario.parts[0].text = dataHoraInfo + ultimaMensagemUsuario.parts[0].text;
+            }
 
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
                 method: 'POST',
@@ -148,6 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Função para resumir a conversa
     async function resumirConversa() {
         if (conversa.length < 2) {
             alert("Não há histórico suficiente para resumir.");
@@ -188,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Função para salvar a conversa em um arquivo .json
     function salvarConversa() {
         if (conversa.length === 0) {
             alert('Não há conversa para salvar.');
@@ -205,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     }
 
+    // Função para carregar uma conversa de um arquivo .json
     function carregarConversa() {
         const arquivo = carregarConversaInput.files[0];
         if (!arquivo) return;
@@ -216,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (Array.isArray(historicoCarregado)) {
                     conversa = historicoCarregado;
                     chatContainer.innerHTML = '';
-                    conversa.forEach(msg => {
+                    historicoCarregado.forEach(msg => {
                         const remetente = msg.role === 'user' ? 'usuario' : 'gemini';
                         adicionarMensagem(remetente, msg.parts[0].text);
                     });
@@ -232,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(arquivo);
     }
     
+    // Função para carregar a mensagem de boas-vindas
     async function carregarGuiaInicial() {
         try {
             const response = await fetch('mensagem_boas_vindas.txt');
@@ -244,57 +293,11 @@ document.addEventListener('DOMContentLoaded', () => {
             adicionarMensagem('gemini', textoGuia);
         } catch (error) {
             console.error(error);
-            adicionarMensagem('gemini', 'Bem-vindo! Parece que não consegui carregar o guia inicial. Você pode começar digitando sua pergunta abaixo.');
-        }
-    }
-    
-    // --- PARTE 2: FUNÇÕES DE ÁUDIO MELHORADAS (NOVO) ---
-    // A função 'reproduzAudio' agora usa a 'listaDeVozes' e procura
-    // especificamente por uma voz em português para maior confiabilidade.
-
-    function reproduzAudio(botao) {
-        paraAudio(); // Garante que qualquer áudio anterior pare.
-
-        const mensagemDiv = botao.closest('.mensagem');
-        const conteudo = mensagemDiv.querySelector('.conteudo-mensagem').textContent;
-
-        if (synth.speaking) {
-            console.error('O sintetizador já está falando.');
-            return;
-        }
-        if (conteudo) {
-            const utterance = new SpeechSynthesisUtterance(conteudo);
-
-            utterance.onerror = function(event) {
-                console.error('Erro na síntese de voz:', event.error);
-                alert('Ocorreu um erro ao tentar reproduzir o áudio. Seu navegador ou sistema operacional pode não ser compatível ou precisa de uma interação inicial.');
-            };
-
-            // Procura por uma voz em português do Brasil
-            const vozBrasileira = listaDeVozes.find(voz => voz.lang === 'pt-BR');
-            if (vozBrasileira) {
-                utterance.voice = vozBrasileira;
-            } else {
-                console.warn('Nenhuma voz "pt-BR" encontrada. O navegador usará a voz padrão.');
-            }
-
-            // Você pode ajustar esses valores se quiser
-            utterance.pitch = 1; // Tom da voz (0 a 2)
-            utterance.rate = 1;  // Velocidade da fala (0.1 a 10)
-            utterance.volume = 1; // Volume (0 a 1)
-
-            synth.speak(utterance);
+            adicionarMensagem('gemini', 'Bem-vindo! Você pode começar digitando sua pergunta abaixo.');
         }
     }
 
-    function paraAudio() {
-        if (synth.speaking) {
-            synth.cancel();
-        }
-    }
-    // --- FIM DA PARTE 2 ---
-
-    // Event Listeners
+    // Registro de todos os Event Listeners da aplicação
     salvarChaveBtn.addEventListener('click', salvarChave);
     enviarBtn.addEventListener('click', enviarMensagem);
     promptUsuarioInput.addEventListener('keydown', (e) => {
@@ -308,38 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarConversaInput.addEventListener('change', carregarConversa);
     guiaInicialBtn.addEventListener('click', carregarGuiaInicial);
 
-    // Inicialização da página
+    // Funções de inicialização da página
     carregarChave();
     carregarGuiaInicial();
-});
-
-// Expondo as funções de áudio para o escopo global para que o 'onclick' no HTML funcione
-window.reproduzAudio = (botao) => {
-    document.dispatchEvent(new CustomEvent('reproduzAudioEvent', { detail: botao }));
-};
-window.paraAudio = () => {
-    document.dispatchEvent(new CustomEvent('paraAudioEvent'));
-};
-// Adicionando os listeners no documento para chamar as funções reais
-document.addEventListener('reproduzAudioEvent', (e) => {
-    const botao = e.detail;
-    const synth = window.speechSynthesis;
-    
-    // Para o áudio anterior
-    if (synth.speaking) synth.cancel();
-
-    const mensagemDiv = botao.closest('.mensagem');
-    const conteudo = mensagemDiv.querySelector('.conteudo-mensagem').textContent;
-    
-    if (conteudo) {
-        const utterance = new SpeechSynthesisUtterance(conteudo);
-        const vozes = synth.getVoices();
-        const vozBrasileira = vozes.find(voz => voz.lang === 'pt-BR');
-        if (vozBrasileira) utterance.voice = vozBrasileira;
-        synth.speak(utterance);
-    }
-});
-document.addEventListener('paraAudioEvent', () => {
-    const synth = window.speechSynthesis;
-    if (synth.speaking) synth.cancel();
 });
