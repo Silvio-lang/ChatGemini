@@ -230,7 +230,8 @@ async function iniciarTutorial() {
     if (messages.length > 0 && !confirm("Isso irá limpar a conversa atual e mostrar uma mensagem de boas-vindas com instruções. Deseja continuar?")) {
         return;
     }
-    limparConversa();
+    pararAudio();
+    limparConversa(); // Adicionado para garantir que a conversa seja limpa antes do tutorial
     const status = document.getElementById("status");
     status.textContent = "Carregando instruções...";
     try {
