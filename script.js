@@ -305,11 +305,12 @@ function localizarTexto() {
     if (totalFound > 0) document.getElementById('clearSearchButton').style.display = 'inline-block';
 }
 
-// Adicione esta nova função perto de reproduzirAudio e pararAudio
+// Função de teste/ativação de áudio com a nova frase
 function testarAudio() {
-  console.log("Testando áudio para 'ligar o motor'...");
-  const utterance = new SpeechSynthesisUtterance("Áudio funcionando");
+  console.log("Ativando o sistema de áudio...");
+  const utterance = new SpeechSynthesisUtterance("Ok"); // MUDANÇA AQUI
   utterance.lang = 'pt-BR';
+  utterance.rate = 0.8; 
   window.speechSynthesis.speak(utterance);
 }
 
