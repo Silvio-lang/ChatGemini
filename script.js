@@ -1,12 +1,11 @@
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from 'https://esm.run/@google/generative-ai';
+
 // --- Variáveis Globais e de Sessão ---
 let messages = [];
 let systemPrompt = null;
 let requestCount = 0;
 let totalTokensEntradaSessao = 0;
 let totalTokensSaidaSessao = 0;
-
-// Pegamos as ferramentas do objeto global 'google.generativeai' que o script do HTML carregou
-const { HarmCategory, HarmBlockThreshold } = google.generativeai;
 
 const safetySettings = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -49,20 +48,26 @@ function atualizarMetricasDisplay() {
 
 async function enviarPrompt() {
     const userPromptText = document.getElementById("userPrompt").value.trim();
-    if (!userPromptText) return;
+    if (!userPromptText) {
+        return;
+    }
     
-    const userMessage = { role: "user", content: userPromptText, timestamp: new Date().toISOString() };
+    const promptParaEnviar = userPromptText;
+    const userMessage = { role: "user", content: promptParaEnviar, timestamp: new Date().toISOString() };
     messages.push(userMessage);
     
     atualizarChat({ ...userMessage, content: userPromptText });
     document.getElementById("userPrompt").value = "";
 
+    console.log("PROMPT FINAL SENDO ENVIADO:", promptParaEnviar);
     await enviarParaAPI();
 }
 
 async function enviarParaAPI() {
     const apiKey = getGeminiApiKey();
-    if (!apiKey || apiKey === "FAKE") return mostrarCampoChave();
+    if (!apiKey || apiKey === "FAKE") {
+        return mostrarCampoChave();
+    }
     
     document.getElementById("status").textContent = "Enviando...";
     requestCount++;
@@ -87,7 +92,7 @@ async function enviarParaAPI() {
     }
 
     try {
-        const genAI = new google.generativeai.GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI(apiKey);
         const modeloSelecionado = document.getElementById("modelo").value;
         const model = genAI.getGenerativeModel({ model: modeloSelecionado, safetySettings });
         const chat = model.startChat({ history: historico });
@@ -110,7 +115,9 @@ async function enviarParaAPI() {
     } catch (error) {
         console.error("Erro API Gemini:", error);
         document.getElementById("status").textContent = `❌ Erro: ${error.message}`;
-        if (messages.at(-1)?.role === "user") messages.pop(); 
+        if (messages.at(-1)?.role === "user") {
+            messages.pop(); 
+        }
         atualizarChat({ role: 'assistant', content: `[Erro: ${error.message}]`, timestamp: new Date().toISOString() });
         atualizarMetricasDisplay();
     }
@@ -123,9 +130,15 @@ function atualizarChat(message) {
     div.className = `mensagem ${origem}`;
 
     let timestampHtml = message.timestamp ? `<span class="timestamp">${new Date(message.timestamp).toLocaleString('pt-BR')}</span>` : '';
-    let audioButtonHtml = (origem === 'assistant') ? `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>` : '';
     
+    let audioButtonHtml = '';
+    if (origem === 'assistant') {
+        audioButtonHtml = `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
+    }
+
+    // Criamos um container para o conteúdo da mensagem para facilitar a captura do texto completo
     const conteudoHtml = `<div class="conteudo-mensagem">${marked.parse(`**${origem === "user" ? "Você" : "IA"}:** ${message.content}`)}</div>`;
+    
     div.innerHTML = timestampHtml + conteudoHtml + audioButtonHtml;
     
     chatDiv.appendChild(div);
@@ -134,7 +147,7 @@ function atualizarChat(message) {
 
 function limparConversa() {
     if (confirm("Deseja realmente limpar a conversa?")) {
-        pararAudio();
+        pararAudio(); // Para o áudio antes de limpar
         messages = [];
         document.getElementById("chat").innerHTML = "";
         document.getElementById("status").textContent = "Conversa limpa.";
@@ -142,28 +155,21 @@ function limparConversa() {
     }
 }
 
-// *** MUDANÇA NO ÁUDIO ***
-// Tornamos a função mais robusta, buscando as vozes no momento do clique.
+// --- NOVAS FUNÇÕES DE ÁUDIO ---
 function reproduzirAudio(buttonElement) {
-    window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel(); // Para qualquer áudio anterior
+
     const mensagemDiv = buttonElement.closest('.mensagem');
+    // Agora pegamos o texto do nosso container '.conteudo-mensagem'
     const elementoConteudo = mensagemDiv.querySelector('.conteudo-mensagem');
     const textoCompleto = elementoConteudo ? elementoConteudo.innerText : '';
-    
-    if (textoCompleto) {
-        const textoParaFalar = textoCompleto.replace(/^IA:\s*/, '').trim();
-        const utterance = new SpeechSynthesisUtterance(textoParaFalar);
-        
-        // Pega a lista de vozes NO MOMENTO DO CLIQUE para evitar problemas de timing.
-        const vozesDisponiveis = window.speechSynthesis.getVoices();
-        const vozBrasileira = vozesDisponiveis.find(voz => voz.lang === 'pt-BR');
 
-        if (vozBrasileira) {
-            utterance.voice = vozBrasileira;
-        } else {
-            utterance.lang = 'pt-BR'; // Se não encontrar uma voz específica, define o idioma.
-        }
-        
+    if (textoCompleto) {
+        // Remove o prefixo "IA:" do início do texto para não ser falado
+        const textoParaFalar = textoCompleto.replace(/^IA:\s*/, '').trim();
+
+        const utterance = new SpeechSynthesisUtterance(textoParaFalar);
+        utterance.lang = 'pt-BR';
         window.speechSynthesis.speak(utterance);
     }
 }
@@ -172,6 +178,7 @@ function pararAudio() {
     window.speechSynthesis.cancel();
 }
 
+// --- FUNÇÕES DE GERENCIAMENTO DE CONVERSA ---
 async function resumirConversa() {
     if (messages.length < 2) return;
     if (!confirm("Isso irá resumir a conversa atual. Continuar?")) return;
@@ -183,7 +190,7 @@ async function resumirConversa() {
     const apiKey = getGeminiApiKey();
     if (!apiKey || apiKey === "FAKE") return mostrarCampoChave();
     try {
-        const genAI = new google.generativeai.GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: promptDeResumo }] }], safetySettings: safetySettings });
         const resumoTexto = (await result.response).text();
@@ -228,19 +235,13 @@ document.getElementById("carregarJson").addEventListener("change", function () {
     reader.readAsText(file);
 });
 
-// *** MUDANÇA NO GUIA INICIAL ***
-// Restaurado para o comportamento original, sem chamar a função 'limparConversa()'.
 async function iniciarTutorial() {
     if (messages.length > 0 && !confirm("Isso irá limpar a conversa atual e mostrar uma mensagem de boas-vindas com instruções. Deseja continuar?")) {
         return;
     }
-    pararAudio();
-    // Limpa o chat diretamente aqui, como no seu original.
-    messages = [];
-    document.getElementById("chat").innerHTML = "";
-    document.getElementById("status").textContent = "Carregando instruções...";
-    document.getElementById("infoArquivoCarregado").textContent = "";
-    
+    limparConversa();
+    const status = document.getElementById("status");
+    status.textContent = "Carregando instruções...";
     try {
         const response = await fetch('./mensagem_boas_vindas.txt');
         if (!response.ok) throw new Error(`Arquivo de boas-vindas não encontrado.`);
@@ -304,7 +305,7 @@ function localizarTexto() {
     if (totalFound > 0) document.getElementById('clearSearchButton').style.display = 'inline-block';
 }
 
-// --- Exposição das Funções para o HTML (Seu código original, intacto) ---
+// --- Exposição das Funções para o HTML ---
 window.enviarPrompt = enviarPrompt;
 window.limparConversa = limparConversa;
 window.salvarConversa = salvarConversa;
@@ -315,10 +316,10 @@ window.trocarChave = trocarChave;
 window.desativarChave = desativarChave;
 window.localizarTexto = localizarTexto;
 window.limparBusca = limparBusca;
-window.reproduzirAudio = reproduzirAudio;
-window.pararAudio = pararAudio;
+window.reproduzirAudio = reproduzirAudio; // NOVO
+window.pararAudio = pararAudio;         // NOVO
 
-// --- Inicialização da Aplicação (Seu código original, intacto) ---
+// --- Inicialização da Aplicação ---
 async function inicializarApp() {
     await loadSystemPrompt();
     inicializarMetricasSessao();
