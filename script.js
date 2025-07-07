@@ -1,5 +1,3 @@
-// SEU SCRIPT.JS ORIGINAL, COM APENAS A FUNÇÃO DE ÁUDIO CORRIGIDA
-
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from 'https://esm.run/@google/generative-ai';
 
 // --- Variáveis Globais e de Sessão ---
@@ -138,6 +136,7 @@ function atualizarChat(message) {
         audioButtonHtml = `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
     }
 
+    // Criamos um container para o conteúdo da mensagem para facilitar a captura do texto completo
     const conteudoHtml = `<div class="conteudo-mensagem">${marked.parse(`**${origem === "user" ? "Você" : "IA"}:** ${message.content}`)}</div>`;
     
     div.innerHTML = timestampHtml + conteudoHtml + audioButtonHtml;
@@ -156,13 +155,12 @@ function limparConversa() {
     }
 }
 
-// *** ÚNICA MUDANÇA NO ARQUIVO: FUNÇÃO DE ÁUDIO CORRIGIDA ***
-// Aplicando a técnica do seu app "Fala Fácil"
+// --- NOVAS FUNÇÕES DE ÁUDIO ---
 function reproduzirAudio(buttonElement) {
-    // Para qualquer áudio que já esteja tocando.
-    window.speechSynthesis.cancel(); 
+    window.speechSynthesis.cancel(); // Para qualquer áudio anterior
 
     const mensagemDiv = buttonElement.closest('.mensagem');
+    // Agora pegamos o texto do nosso container '.conteudo-mensagem'
     const elementoConteudo = mensagemDiv.querySelector('.conteudo-mensagem');
     const textoCompleto = elementoConteudo ? elementoConteudo.innerText : '';
 
@@ -171,12 +169,7 @@ function reproduzirAudio(buttonElement) {
         const textoParaFalar = textoCompleto.replace(/^IA:\s*/, '').trim();
 
         const utterance = new SpeechSynthesisUtterance(textoParaFalar);
-        
-        // A MÁGICA: Apenas definimos o idioma, sem gerenciar a lista de vozes.
-        // O navegador escolherá a melhor voz padrão para pt-BR que ele tiver.
         utterance.lang = 'pt-BR';
-        
-        // Mandamos falar.
         window.speechSynthesis.speak(utterance);
     }
 }
@@ -185,7 +178,7 @@ function pararAudio() {
     window.speechSynthesis.cancel();
 }
 
-// --- RESTO DO SEU CÓDIGO ORIGINAL - SEM ALTERAÇÕES ---
+// --- FUNÇÕES DE GERENCIAMENTO DE CONVERSA ---
 async function resumirConversa() {
     if (messages.length < 2) return;
     if (!confirm("Isso irá resumir a conversa atual. Continuar?")) return;
@@ -312,6 +305,15 @@ function localizarTexto() {
     if (totalFound > 0) document.getElementById('clearSearchButton').style.display = 'inline-block';
 }
 
+// Adicione esta nova função perto de reproduzirAudio e pararAudio
+function testarAudio() {
+  console.log("Testando áudio para 'ligar o motor'...");
+  const utterance = new SpeechSynthesisUtterance("Áudio funcionando");
+  utterance.lang = 'pt-BR';
+  window.speechSynthesis.speak(utterance);
+}
+
+// --- Exposição das Funções para o HTML ---
 window.enviarPrompt = enviarPrompt;
 window.limparConversa = limparConversa;
 window.salvarConversa = salvarConversa;
@@ -322,9 +324,11 @@ window.trocarChave = trocarChave;
 window.desativarChave = desativarChave;
 window.localizarTexto = localizarTexto;
 window.limparBusca = limparBusca;
-window.reproduzirAudio = reproduzirAudio;
-window.pararAudio = pararAudio;
+window.reproduzirAudio = reproduzirAudio; // NOVO
+window.pararAudio = pararAudio;         // NOVO
+window.testarAudio = testarAudio; // ADICIONE ESTA LINHA
 
+// --- Inicialização da Aplicação ---
 async function inicializarApp() {
     await loadSystemPrompt();
     inicializarMetricasSessao();
