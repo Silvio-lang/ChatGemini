@@ -142,26 +142,28 @@ function limparConversa() {
     }
 }
 
-let listaDeVozes = [];
-function carregarVozes() {
-    listaDeVozes = window.speechSynthesis.getVoices();
-}
-carregarVozes();
-if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = carregarVozes;
-}
-
+// *** MUDANÇA NO ÁUDIO ***
+// Tornamos a função mais robusta, buscando as vozes no momento do clique.
 function reproduzirAudio(buttonElement) {
     window.speechSynthesis.cancel();
     const mensagemDiv = buttonElement.closest('.mensagem');
     const elementoConteudo = mensagemDiv.querySelector('.conteudo-mensagem');
     const textoCompleto = elementoConteudo ? elementoConteudo.innerText : '';
+    
     if (textoCompleto) {
         const textoParaFalar = textoCompleto.replace(/^IA:\s*/, '').trim();
         const utterance = new SpeechSynthesisUtterance(textoParaFalar);
-        const vozBrasileira = listaDeVozes.find(voz => voz.lang === 'pt-BR');
-        if (vozBrasileira) utterance.voice = vozBrasileira;
-        else utterance.lang = 'pt-BR';
+        
+        // Pega a lista de vozes NO MOMENTO DO CLIQUE para evitar problemas de timing.
+        const vozesDisponiveis = window.speechSynthesis.getVoices();
+        const vozBrasileira = vozesDisponiveis.find(voz => voz.lang === 'pt-BR');
+
+        if (vozBrasileira) {
+            utterance.voice = vozBrasileira;
+        } else {
+            utterance.lang = 'pt-BR'; // Se não encontrar uma voz específica, define o idioma.
+        }
+        
         window.speechSynthesis.speak(utterance);
     }
 }
@@ -226,14 +228,19 @@ document.getElementById("carregarJson").addEventListener("change", function () {
     reader.readAsText(file);
 });
 
+// *** MUDANÇA NO GUIA INICIAL ***
+// Restaurado para o comportamento original, sem chamar a função 'limparConversa()'.
 async function iniciarTutorial() {
     if (messages.length > 0 && !confirm("Isso irá limpar a conversa atual e mostrar uma mensagem de boas-vindas com instruções. Deseja continuar?")) {
         return;
     }
     pararAudio();
-    limparConversa(); // Adicionado para garantir que a conversa seja limpa antes do tutorial
-    const status = document.getElementById("status");
-    status.textContent = "Carregando instruções...";
+    // Limpa o chat diretamente aqui, como no seu original.
+    messages = [];
+    document.getElementById("chat").innerHTML = "";
+    document.getElementById("status").textContent = "Carregando instruções...";
+    document.getElementById("infoArquivoCarregado").textContent = "";
+    
     try {
         const response = await fetch('./mensagem_boas_vindas.txt');
         if (!response.ok) throw new Error(`Arquivo de boas-vindas não encontrado.`);
@@ -297,6 +304,7 @@ function localizarTexto() {
     if (totalFound > 0) document.getElementById('clearSearchButton').style.display = 'inline-block';
 }
 
+// --- Exposição das Funções para o HTML (Seu código original, intacto) ---
 window.enviarPrompt = enviarPrompt;
 window.limparConversa = limparConversa;
 window.salvarConversa = salvarConversa;
@@ -310,6 +318,7 @@ window.limparBusca = limparBusca;
 window.reproduzirAudio = reproduzirAudio;
 window.pararAudio = pararAudio;
 
+// --- Inicialização da Aplicação (Seu código original, intacto) ---
 async function inicializarApp() {
     await loadSystemPrompt();
     inicializarMetricasSessao();
