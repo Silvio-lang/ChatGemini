@@ -1,11 +1,12 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from 'https://esm.run/@google/generative-ai';
-
 // --- Variáveis Globais e de Sessão ---
 let messages = [];
 let systemPrompt = null;
 let requestCount = 0;
 let totalTokensEntradaSessao = 0;
 let totalTokensSaidaSessao = 0;
+
+// Pegamos as ferramentas do objeto global 'google.generativeai' que o script do HTML carregou
+const { HarmCategory, HarmBlockThreshold } = google.generativeai;
 
 const safetySettings = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -48,26 +49,20 @@ function atualizarMetricasDisplay() {
 
 async function enviarPrompt() {
     const userPromptText = document.getElementById("userPrompt").value.trim();
-    if (!userPromptText) {
-        return;
-    }
+    if (!userPromptText) return;
     
-    const promptParaEnviar = userPromptText;
-    const userMessage = { role: "user", content: promptParaEnviar, timestamp: new Date().toISOString() };
+    const userMessage = { role: "user", content: userPromptText, timestamp: new Date().toISOString() };
     messages.push(userMessage);
     
     atualizarChat({ ...userMessage, content: userPromptText });
     document.getElementById("userPrompt").value = "";
 
-    console.log("PROMPT FINAL SENDO ENVIADO:", promptParaEnviar);
     await enviarParaAPI();
 }
 
 async function enviarParaAPI() {
     const apiKey = getGeminiApiKey();
-    if (!apiKey || apiKey === "FAKE") {
-        return mostrarCampoChave();
-    }
+    if (!apiKey || apiKey === "FAKE") return mostrarCampoChave();
     
     document.getElementById("status").textContent = "Enviando...";
     requestCount++;
@@ -92,7 +87,7 @@ async function enviarParaAPI() {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new google.generativeai.GoogleGenerativeAI(apiKey);
         const modeloSelecionado = document.getElementById("modelo").value;
         const model = genAI.getGenerativeModel({ model: modeloSelecionado, safetySettings });
         const chat = model.startChat({ history: historico });
@@ -115,9 +110,7 @@ async function enviarParaAPI() {
     } catch (error) {
         console.error("Erro API Gemini:", error);
         document.getElementById("status").textContent = `❌ Erro: ${error.message}`;
-        if (messages.at(-1)?.role === "user") {
-            messages.pop(); 
-        }
+        if (messages.at(-1)?.role === "user") messages.pop(); 
         atualizarChat({ role: 'assistant', content: `[Erro: ${error.message}]`, timestamp: new Date().toISOString() });
         atualizarMetricasDisplay();
     }
@@ -130,14 +123,9 @@ function atualizarChat(message) {
     div.className = `mensagem ${origem}`;
 
     let timestampHtml = message.timestamp ? `<span class="timestamp">${new Date(message.timestamp).toLocaleString('pt-BR')}</span>` : '';
-    
-    let audioButtonHtml = '';
-    if (origem === 'assistant') {
-        audioButtonHtml = `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
-    }
+    let audioButtonHtml = (origem === 'assistant') ? `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>` : '';
     
     const conteudoHtml = `<div class="conteudo-mensagem">${marked.parse(`**${origem === "user" ? "Você" : "IA"}:** ${message.content}`)}</div>`;
-    
     div.innerHTML = timestampHtml + conteudoHtml + audioButtonHtml;
     
     chatDiv.appendChild(div);
@@ -154,44 +142,26 @@ function limparConversa() {
     }
 }
 
-// --- LÓGICA DE SÍNTESE DE VOZ (ÁUDIO) - Aprimorada ---
 let listaDeVozes = [];
-
-// Função que carrega as vozes disponíveis no navegador.
 function carregarVozes() {
     listaDeVozes = window.speechSynthesis.getVoices();
 }
-
-// Executamos a função uma vez no início.
 carregarVozes();
-// E pedimos ao navegador para executá-la novamente se a lista de vozes mudar.
-// Isso é crucial para a compatibilidade com navegadores móveis que carregam as vozes de forma assíncrona.
 if (window.speechSynthesis.onvoiceschanged !== undefined) {
     window.speechSynthesis.onvoiceschanged = carregarVozes;
 }
 
 function reproduzirAudio(buttonElement) {
-    window.speechSynthesis.cancel(); // Para qualquer áudio anterior
-
+    window.speechSynthesis.cancel();
     const mensagemDiv = buttonElement.closest('.mensagem');
     const elementoConteudo = mensagemDiv.querySelector('.conteudo-mensagem');
     const textoCompleto = elementoConteudo ? elementoConteudo.innerText : '';
-
     if (textoCompleto) {
         const textoParaFalar = textoCompleto.replace(/^IA:\s*/, '').trim();
         const utterance = new SpeechSynthesisUtterance(textoParaFalar);
-
-        // A MÁGICA ACONTECE AQUI:
-        // Procuramos por uma voz em português na lista que carregamos.
         const vozBrasileira = listaDeVozes.find(voz => voz.lang === 'pt-BR');
-        if (vozBrasileira) {
-            // Se encontrarmos, usamos essa voz específica. Isso aumenta muito a confiabilidade.
-            utterance.voice = vozBrasileira;
-        } else {
-            // Se não, definimos o idioma como fallback.
-            utterance.lang = 'pt-BR';
-        }
-
+        if (vozBrasileira) utterance.voice = vozBrasileira;
+        else utterance.lang = 'pt-BR';
         window.speechSynthesis.speak(utterance);
     }
 }
@@ -200,7 +170,6 @@ function pararAudio() {
     window.speechSynthesis.cancel();
 }
 
-// --- FUNÇÕES DE GERENCIAMENTO DE CONVERSA (Seu código original, intacto) ---
 async function resumirConversa() {
     if (messages.length < 2) return;
     if (!confirm("Isso irá resumir a conversa atual. Continuar?")) return;
@@ -212,7 +181,7 @@ async function resumirConversa() {
     const apiKey = getGeminiApiKey();
     if (!apiKey || apiKey === "FAKE") return mostrarCampoChave();
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new google.generativeai.GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent({ contents: [{ role: 'user', parts: [{ text: promptDeResumo }] }], safetySettings: safetySettings });
         const resumoTexto = (await result.response).text();
@@ -327,7 +296,6 @@ function localizarTexto() {
     if (totalFound > 0) document.getElementById('clearSearchButton').style.display = 'inline-block';
 }
 
-// --- Exposição das Funções para o HTML (Seu código original, intacto) ---
 window.enviarPrompt = enviarPrompt;
 window.limparConversa = limparConversa;
 window.salvarConversa = salvarConversa;
@@ -341,7 +309,6 @@ window.limparBusca = limparBusca;
 window.reproduzirAudio = reproduzirAudio;
 window.pararAudio = pararAudio;
 
-// --- Inicialização da Aplicação (Seu código original, intacto) ---
 async function inicializarApp() {
     await loadSystemPrompt();
     inicializarMetricasSessao();
