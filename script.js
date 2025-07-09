@@ -129,22 +129,30 @@ function atualizarChat(message) {
     const origem = message.role === "model" ? "assistant" : message.role;
     div.className = `mensagem ${origem}`;
 
+    // Para saber o "endereço" da mensagem, pegamos seu índice no array.
+    // Como ela acabou de ser adicionada, é sempre a última.
+    const indiceDaMensagem = messages.length - 1;
+
     let timestampHtml = message.timestamp ? `<span class="timestamp">${new Date(message.timestamp).toLocaleString('pt-BR')}</span>` : '';
     
-    let audioButtonHtml = '';
+    // Agrupamos os botões de ação da mensagem
+    let botoesDeAcaoHtml = `<div class="botoes-mensagem">`;
     if (origem === 'assistant') {
-        audioButtonHtml = `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
+        botoesDeAcaoHtml += `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
     }
+    // Adicionamos o botão de remover para TODAS as mensagens
+    botoesDeAcaoHtml += `<button class="play-button" onclick="removerMensagem(${indiceDaMensagem})" title="Remover mensagem">🗑️</button>`;
+    botoesDeAcaoHtml += `</div>`;
 
-    // Criamos um container para o conteúdo da mensagem para facilitar a captura do texto completo
+
     const conteudoHtml = `<div class="conteudo-mensagem">${marked.parse(`**${origem === "user" ? "Você" : "IA"}:** ${message.content}`)}</div>`;
     
-    div.innerHTML = timestampHtml + conteudoHtml + audioButtonHtml;
+    // A ordem do HTML agora é: timestamp, conteúdo, e por último a div de botões
+    div.innerHTML = timestampHtml + conteudoHtml + botoesDeAcaoHtml;
     
     chatDiv.appendChild(div);
     chatDiv.scrollTop = chatDiv.scrollHeight;
 }
-
 function limparConversa() {
     if (confirm("Deseja realmente limpar a conversa?")) {
         pararAudio(); // Para o áudio antes de limpar
@@ -314,6 +322,46 @@ function testarAudio() {
   window.speechSynthesis.speak(utterance);
 }
 
+// ADICIONE ESTA NOVA FUNÇÃO ABAIXO DA SUA FUNÇÃO 'limparConversa'
+
+function removerMensagem(indiceParaRemover) {
+    // 1. Pede confirmação por segurança
+    const confirmacao = confirm("Tem certeza que deseja remover esta mensagem e seu conteúdo do histórico?");
+    if (!confirmacao) {
+        return; // Se o usuário cancelar, não faz nada.
+    }
+
+    // 2. Remove a mensagem do nosso array "memória"
+    messages.splice(indiceParaRemover, 1);
+
+    // 3. Redesenha a tela do zero para refletir a mudança
+    const chatDiv = document.getElementById("chat");
+    chatDiv.innerHTML = ""; // Limpa o chat visualmente
+
+    // Recria cada mensagem na tela com o índice correto
+    messages.forEach((mensagem, indiceAtual) => {
+        // Esta parte recria o HTML da mensagem, similar à função 'atualizarChat'
+        const div = document.createElement("div");
+        const origem = mensagem.role === "model" ? "assistant" : mensagem.role;
+        div.className = `mensagem ${origem}`;
+
+        let timestampHtml = mensagem.timestamp ? `<span class="timestamp">${new Date(mensagem.timestamp).toLocaleString('pt-BR')}</span>` : '';
+        
+        let botoesDeAcaoHtml = `<div class="botoes-mensagem">`;
+        if (origem === 'assistant') {
+            botoesDeAcaoHtml += `<button class="play-button" onclick="reproduzirAudio(this)" title="Ouvir resposta">🔊</button>`;
+        }
+        botoesDeAcaoHtml += `<button class="play-button" onclick="removerMensagem(${indiceAtual})" title="Remover mensagem">🗑️</button>`;
+        botoesDeAcaoHtml += `</div>`;
+
+        const conteudoHtml = `<div class="conteudo-mensagem">${marked.parse(`**${origem === "user" ? "Você" : "IA"}:** ${mensagem.content}`)}</div>`;
+        div.innerHTML = timestampHtml + conteudoHtml + botoesDeAcaoHtml;
+        chatDiv.appendChild(div);
+    });
+
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
 // --- Exposição das Funções para o HTML ---
 window.enviarPrompt = enviarPrompt;
 window.limparConversa = limparConversa;
@@ -325,9 +373,10 @@ window.trocarChave = trocarChave;
 window.desativarChave = desativarChave;
 window.localizarTexto = localizarTexto;
 window.limparBusca = limparBusca;
-window.reproduzirAudio = reproduzirAudio; // NOVO
-window.pararAudio = pararAudio;         // NOVO
-window.testarAudio = testarAudio; // ADICIONE ESTA LINHA
+window.reproduzirAudio = reproduzirAudio;
+window.pararAudio = pararAudio; 
+window.testarAudio = testarAudio; 
+window.removerMensagem = removerMensagem; // ADICIONE ESTA LINHA
 
 // --- Inicialização da Aplicação ---
 async function inicializarApp() {
