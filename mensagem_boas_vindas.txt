@@ -18,3 +18,4 @@ Depois destras instruções, eu estarei configurado para esta sessão. Você pod
 Para **"reduzir o peso"** desse texto no histórico sem perder o fio da meada, use a função 📝 Resumir. Ela criará uma versão mais leve da conversa.  Depois de utilizá-lo, é conveniente você salvar a conversa e iniciar uma nova.
 
 Se preferir, pode simplesmente ignorar tudo isso e fazer sua primeira pergunta imediatamente!
+                                                                Consulte também o ChatBot em baixo, à direita   ↘
