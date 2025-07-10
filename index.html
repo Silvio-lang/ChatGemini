@@ -12,12 +12,12 @@
         }
 
         /* Regra BASE para definir uma fonte consistente em todo o aplicativo */
-        body, button, select, input[type="text"], textarea {
+        body, button, select, input[type="text"], textarea, label {
             font-family: Arial, sans-serif;
-            font-size: 15px; /* PONTO DE PARTIDA PARA EXPERIMENTAR (14px, 15px, etc.) */
+            font-size: 15px; /* PONTO DE PARTIDA PARA EXPERIMENTAR */
         }
-        
-        body {
+
+        body { 
             padding: 20px; 
             background-color: #f4f4f4; 
         }
@@ -32,7 +32,7 @@
         .button-group { display: flex; align-items: center; gap: 5px; }
         #infoArquivoCarregado { margin-left: 20px; font-style: italic; color: #555; }
         .highlight { background-color: #FFF3A3; color: #333; border-radius: 3px; padding: 1px 2px; }
-        .mensagem { margin-bottom: 10px; padding: 8px; border-radius: 5px; } /* font-size removido para herdar da base */
+        .mensagem { margin-bottom: 10px; padding: 8px; border-radius: 5px; }
         .user { color: #0056b3; background-color: #e6f2ff; text-align: right; margin-left: 20%; }
         .assistant { color: #007b00; background-color: #e6ffe6; text-align: left; margin-right: 20%; }
         .dica { font-size: 0.85em; color: #666; }
@@ -105,9 +105,8 @@
     <div id="status"></div>
     <input type="file" id="carregarJson" accept=".json" style="display:none;">
     
-    <!-- Seção de Scripts Final e Corrigida -->
-    <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/main.js"></script>
-    <script src="script.js"></script>
+    <!-- Seção de Script restaurada para a versão original e funcional -->
+    <script type="module" src="script.js"></script>
 
 </body>
 </html>
