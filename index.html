@@ -5,21 +5,34 @@
     <title>WebGemini - Conversa</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        body, button, select, input[type="text"], textarea { 
-    font-family: Arial, sans-serif; 
-    font-size: 15px; /* <-- PONTO DE PARTIDA PARA EXPERIMENTAR */
-}
+        /* Regra MESTRA para desativar o ajuste automático de texto em celulares */
+        html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
+        /* Regra BASE para definir uma fonte consistente em todo o aplicativo */
+        body, button, select, input[type="text"], textarea {
+            font-family: Arial, sans-serif;
+            font-size: 15px; /* PONTO DE PARTIDA PARA EXPERIMENTAR (14px, 15px, etc.) */
+        }
+        
+        body {
+            padding: 20px; 
+            background-color: #f4f4f4; 
+        }
+
         #chat { width: 100%; height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; background: #fff; margin-bottom: 10px; resize: vertical; }
         #userPrompt { width: 100%; padding: 10px; box-sizing: border-box; resize: vertical; min-height: 50px; }
-        button, select, input[type="file"], input[type="text"], label { margin: 0; margin-right: 5px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background-color: #e0e0e0; font-size: 14px; vertical-align: middle; }
+        button, select, input[type="file"], input[type="text"], label { margin: 0; margin-right: 5px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; background-color: #e0e0e0; vertical-align: middle; }
         input[type="checkbox"] { margin-right: 2px; }
-        button:hover, select:hover, input[type="file"]:hover, input[type-="text"]:hover, label:hover { background-color: #d0d0d0; }
+        button:hover, select:hover, input[type="file"]:hover, input[type="text"]:hover, label:hover { background-color: #d0d0d0; }
         .action-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; }
         .space-between { justify-content: space-between; }
         .button-group { display: flex; align-items: center; gap: 5px; }
         #infoArquivoCarregado { margin-left: 20px; font-style: italic; color: #555; }
         .highlight { background-color: #FFF3A3; color: #333; border-radius: 3px; padding: 1px 2px; }
-        .mensagem { margin-bottom: 10px; padding: 8px; border-radius: 5px; }
+        .mensagem { margin-bottom: 10px; padding: 8px; border-radius: 5px; } /* font-size removido para herdar da base */
         .user { color: #0056b3; background-color: #e6f2ff; text-align: right; margin-left: 20%; }
         .assistant { color: #007b00; background-color: #e6ffe6; text-align: left; margin-right: 20%; }
         .dica { font-size: 0.85em; color: #666; }
@@ -28,21 +41,8 @@
         #status { margin-top: 15px; padding: 10px; background-color: #ffe0b2; border: 1px solid #ffcc80; border-radius: 4px; color: #333; }
         #requestInfo, #systemPromptInfo { font-size: 0.9em; color: #555; padding: 5px; background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; margin-top: 5px;}
         .timestamp { display: block; font-size: 0.75em; color: #888; margin-bottom: 4px; text-align: inherit; }
-
-        /* NOVO: Estilo para o botão de reprodução de áudio */
-        .play-button { 
-            cursor: pointer; 
-            border: none; 
-            background: none; 
-            font-size: 1.2em;
-            margin-left: 10px;
-            vertical-align: middle;
-            padding: 0 5px;
-        }
-        .play-button:hover {
-            background-color: #d0d0d0;
-            border-radius: 4px;
-        }
+        .play-button { cursor: pointer; border: none; background: none; font-size: 1.2em; margin-left: 10px; vertical-align: middle; padding: 0 5px; }
+        .play-button:hover { background-color: #d0d0d0; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -54,12 +54,6 @@
         <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
         <option value="gemini-1.0-pro">Gemini 1.0 Pro (Estável)</option>
     </select>
-
-    <!-- Funcionalidade de Upload de Arquivos Suspensa Temporariamente
-    <input type="file" id="fileInput" accept=".txt,.pdf" style="display:none;">
-    <button onclick="document.getElementById('fileInput').click()">Carregar Arquivo Referência</button>
-    <span id="fileName">Nenhum arquivo escolhido</span>
-    -->
 
     <div id="requestInfo" style="display: flex; gap: 15px; align-items: center;">
       <span>Requisições na Sessão: <strong id="requestCountDisplay">0</strong></span>
@@ -93,19 +87,16 @@
             <button onclick="desativarChave()">Limpar Chave</button>
             <button onclick="trocarChave()">🔑 Trocar Chave</button>
         </div>
-
-        <!-- ADICIONADO: Botão global para parar o áudio -->
         <div class="button-group">
-            <button onclick="testarAudio()" title="Ativa a funcionalidade de voz do aplicativo.">🔊 Ativar Voz</button>
+            <button onclick="testarAudio()" title="Testa a saída de áudio para ativar a voz.">🔊 Testar Áudio</button>
             <button onclick="pararAudio()" title="Para a reprodução de voz atual.">⏹️ Parar Áudio</button>
         </div>
-        
         <div class="button-group">
             <span class="dica">Para conversar, digite acima e clique em Enviar.</span>
             <span id="infoArquivoCarregado"></span>
         </div>
         <div class="button-group">
-            <input type="checkbox" id="incluirData" style="cursor: pointer;" checked>
+            <input type="checkbox" id="incluirData" style="cursor: pointer;">
             <label for="incluirData">Incluir data/hora no contexto</label>
         </div>
     </div>
@@ -114,11 +105,9 @@
     <div id="status"></div>
     <input type="file" id="carregarJson" accept=".json" style="display:none;">
     
-    <script 
-     async 
-     src="https://app.gptmaker.ai/widget/3E3BFFBBC4641249C0729E18DC1FD70E/float.js">
-    </script>
+    <!-- Seção de Scripts Final e Corrigida -->
+    <script src="https://cdn.jsdelivr.net/npm/@google/generative-ai/dist/main.js"></script>
+    <script src="script.js"></script>
 
-    <script type="module" src="script.js"></script>
 </body>
 </html>
