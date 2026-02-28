@@ -58,11 +58,12 @@
 <body>
 
 <div id="info">
-    <span class="stat">Dist: <b id="distVal">0.00</b>m</span>
-    <span class="stat">Alvo: <b id="targetVal">--</b></span>
-    <span class="stat" id="stateStat">Estado: <b id="stateVal">Neutro</b></span>
-    <span class="stat">🔴E:<b id="leftVal">OFF</b></span>
-    <span class="stat">🔴D:<b id="rightVal">OFF</b></span>
+    <span class="stat" style=font-size:24px;">Dist: <b id="distVal" style="font-size:32px;">0.00</b>m</span>
+    
+    <span id="targetStat" style="display: none;">Alvo: <b id="targetVal"X>--</b></span>
+    <span id="stateStat" style="display: none;">Estado: <b id="stateVal">Neutro</b></span>
+    <span id="leftStat" style="display: none;">E:<b id="leftVal">OFF</b></span>
+    <span id="rightStat" style="display: none;">D:<b id="rightVal">OFF</b></span>
 </div>
 
 <canvas id="canvas"></canvas>
