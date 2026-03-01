@@ -53,6 +53,22 @@
         width: 100%;
         height: calc(100vh - 45px);
     }
+/* Esconde o conteúdo e mostra o aviso em modo retrato */
+@media screen and (orientation: portrait) {
+    #canvas, #info { display: none; }
+    body::before {
+        content: "🔄 Por favor, vire o celular para o modo deitado.";
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #1a1a2e;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        font-weight: bold;
+    }
+}
 </style>
 </head>
 <body>
