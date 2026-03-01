@@ -75,11 +75,11 @@
 
 const CONFIG = {
     driftSpeed: 0.10,                     // Velocidade da fuga de rota
-    correctionSpeed: 0.25,         // Velocidade da correção
+    correctionSpeed: 0.15,         // Velocidade da correção
     reactionDelay: 450,             // Tempo de reação ao vibracall
     stabilizationDelay: 450,    // Tempo reação saída do vibracall
     scrollSpeed: 1.0,                   // Velocidade da pista
-    stepInterval: 800,               // Intervalo dos passos
+    stepInterval: 500,               // Intervalo dos passos
     stepLiftHeight: 12,                 //  Levantamento dos pés
     laneWidth: 160,                   // Largura de cada pista
     distractionPause: 6000,   // Tempo entre distrações do atleta
@@ -383,9 +383,9 @@ function drawTrack() {
 
 function drawBlueLine() {
     ctx.strokeStyle = '#4dabf7';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1;
     ctx.shadowColor = '#4dabf7';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 4;
     
     ctx.beginPath();
     ctx.moveTo(blueLineX, 0);
@@ -429,7 +429,7 @@ function drawBlueLine() {
     
     // === LINHAS TRACEJADAS ===
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.setLineDash([6, 6]);
     
     ctx.beginPath();
@@ -449,7 +449,7 @@ function drawTargetGuide() {
     if(correctionTargetMeters !== null) {
         const targetX = blueLineX + (correctionTargetMeters * pixelsPerMeter);
         ctx.strokeStyle = 'rgba(81, 207, 102, 0.9)';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 1;
         ctx.setLineDash([8, 6]);
         ctx.shadowColor = '#51cf66';
         ctx.shadowBlur = 10;
