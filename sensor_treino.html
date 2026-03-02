@@ -3,77 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Simulador - Pista de Atletismo</title>
+<title>Simulador - Pista Olímpica</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { background:#1a1a2e; color:#eee; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; touch-action: none; width: 100vw; height: 100vh; }
-    
     #instrucoes {
-        background: rgba(22, 33, 62, 0.95);
-        padding: 10px;
-        font-size: 13px;
-        line-height: 1.4;
-        border-bottom: 2px solid #4dabf7;
-        color: #fff;
+        position: absolute; top: 0; left: 0; width: 100%;
+        background: rgba(10, 20, 40, 0.85); padding: 10px 15px;
+        font-size: 11px; line-height: 1.3; color: #fff; z-index: 10;
+        pointer-events: none; border-bottom: 1px solid rgba(77, 171, 247, 0.3);
     }
-
-    #info { 
-        text-align:center; padding:6px 4px; background:#16213e; 
-        display: flex; justify-content: center; gap: 8px; 
-    }
-    
-    .stat { background: #0f3460; padding: 3px 8px; border-radius: 3px; font-family: monospace; font-size: 24px; white-space: nowrap; }
-    canvas { background: #2a2a3a; display:block; width: 100%; height: 100%; }
-    
-    @media screen and (orientation: portrait) {
-        #canvas, #info, #instrucoes { display: none; }
-        body::before {
-            content: "🔄 Por favor, vire o celular para o modo deitado.";
-            display: flex; justify-content: center; align-items: center; height: 100vh;
-            background: #1a1a2e; color: white; text-align: center; padding: 20px; font-weight: bold;
-        }
-    }
+    #info { position: absolute; bottom: 10px; right: 15px; z-index: 5; }
+    .stat { background: rgba(15, 52, 96, 0.8); padding: 5px 12px; border-radius: 5px; font-family: monospace; font-size: 28px; }
+    canvas { background: #2a2a3a; display:block; width: 100vw; height: 100vh; }
 </style>
 </head>
 <body>
 
 <div id="instrucoes">
-    <strong>Treinamento para deficiente:</strong> Toque na tela da direita para acelerar à direita. Na da esquerda para acelerar à esquerda. 
-    O som para quando estiver na faixa central. O som intermitente é porque está se deslocando para direita ou esquerda. 
-    A frequência mais alta é para a direita. Som contínuo é porque já saiu muito fora da região e permanece até chegar ao centro. 
-    Este treinamento deve auxiliar para a atividade prática.
+    <strong>TREINAMENTO DO ATLETA DEFICIENTE: (Não deficiente? feche os olhos!)</strong> <br>
+    Linha Azul = Marco 0.00m. <br>
+    Procura manter a direção correta dentro da raia.<br>
+    Bips graves: está se deslocando para a esquerda. (Dar leves toques na tecla da direita)<br>
+    Bips agudos: está se deslocando para a direita. (Dar leves toques na tecla da esquerda)<br>
+    Quando atingir 1,20 metros atuará o som agudo continuo. (Dar toques na tecla esquerda)<br>
+    Quando atingir 0,80 metros atuará o som grave, contínuo. (Dar toques na tecla direita)<br>
+    Silêncio:  Está andando na direção correta dentro da raia. 😃
 </div>
 
 <div id="info">
-    <span class="stat">Dist: <b id="distVal" style="font-size:32px;">1.00</b>m</span>
+    <span class="stat">Dist: <b id="distVal">1.00</b>m</span>
 </div>
 
 <canvas id="canvas"></canvas>
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  ⚙️ CONFIGURAÇÕES
+// ⚙️ PAINEL DE AJUSTES (CONFIGURAÇÃO)
 // ═══════════════════════════════════════════════════════════════════
-const CONFIG = {
-    driftSpeed: 0.10,
-    accel: 0.02,
-    friction: 0.92,
-    maxSpeed: 0.25,
-    distractionPause: 6000,
-    scrollSpeed: 1.0,
-    laneWidth: 160
+const AJUSTES = {
+    freqEsq: 500,           
+    freqDir: 2000,          
+    intervaloBip: 350,      
+    triggerEsq: 0.80,       
+    releaseEsq: 0.85,     // cessa alarme esquerda  
+    triggerDir: 1.20,       
+    releaseDir: 1.15,       // cessa alarme direita
+    driftImpulso: 0.07,    // Força do impulso do vento 
+    tempoEntreDrifts: 6000, 
+    aceleracaoAtleta: 0.010,
+    velMaxima: 0.20,        
+    zonaMortaVel: 0.04,     // zona morta de velocidade
+    limiteMinMeters: 0.00,  // fuga máxima esquerda
+    limiteMaxMeters: 2.00   // fuga máxima direita
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// 🛠️ LÓGICA E RENDERIZAÇÃO
+// ═══════════════════════════════════════════════════════════════════
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const ui = { dist: document.getElementById("distVal") };
-
-// ═══════════════════════════════════════════════════════════════════
-//  🔊 MOTOR DE ÁUDIO BLINDADO
-// ═══════════════════════════════════════════════════════════════════
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const FREQ = { ESQUERDA: 440, DIREITA: 880 };
 let oscS1 = null, oscS4 = null, bipInterval = null;
+let pixelsPerMeter = 150, blueLineX; 
+let person = { x: 0, y: 0 };
+let currentVelocity = 0, lastDriftTime = 0, leftSignal = false, rightSignal = false;
+let input = { left: false, right: false };
+
+function tocarBip(f) {
+    try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.value = f;
+        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+    } catch(e) {}
+}
 
 function iniciarSomContinuo(f) {
     const osc = audioCtx.createOscillator();
@@ -83,18 +92,6 @@ function iniciarSomContinuo(f) {
     osc.connect(g); g.connect(audioCtx.destination);
     osc.start();
     return osc;
-}
-
-function tocarBip(f) {
-    try {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.frequency.value = f;
-        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    } catch(e) {}
 }
 
 function pararSomSeguro(tipo) {
@@ -109,65 +106,47 @@ function pararSomSeguro(tipo) {
 
 function pararBips() { if (bipInterval) { clearInterval(bipInterval); bipInterval = null; } }
 
-function gerenciarSons() {
+function gerenciarSons(dist) {
     if (!audioCtx || audioCtx.state !== 'running') return;
-    const dist = (person.x - blueLineX) / pixelsPerMeter;
-    
-    // Silêncio na Faixa Central (Zona de Conforto)
-    if (dist >= 0.95 && dist <= 1.05) {
-        pararSomSeguro('ESQ'); pararSomSeguro('DIR'); pararBips();
-        return;
-    }
+    if (!leftSignal && dist <= AJUSTES.triggerEsq) leftSignal = true;
+    if (leftSignal && dist >= AJUSTES.releaseEsq) leftSignal = false;
+    if (!rightSignal && dist >= AJUSTES.triggerDir) rightSignal = true;
+    if (rightSignal && dist <= AJUSTES.releaseDir) rightSignal = false;
 
     if (leftSignal) {
-        if (!oscS1) oscS1 = iniciarSomContinuo(FREQ.ESQUERDA);
-        pararBips();
-    } else { pararSomSeguro('ESQ'); }
+        if (!oscS1) oscS1 = iniciarSomContinuo(AJUSTES.freqEsq);
+        pararBips(); return;
+    } else pararSomSeguro('ESQ');
 
     if (rightSignal) {
-        if (!oscS4) oscS4 = iniciarSomContinuo(FREQ.DIREITA);
-        pararBips();
-    } else { pararSomSeguro('DIR'); }
+        if (!oscS4) oscS4 = iniciarSomContinuo(AJUSTES.freqDir);
+        pararBips(); return;
+    } else pararSomSeguro('DIR');
 
-    if (!leftSignal && !rightSignal && distractionActive) {
+    if (Math.abs(currentVelocity) > AJUSTES.zonaMortaVel) {
         if (!bipInterval) {
             bipInterval = setInterval(() => {
-                const f = (driftDirection === -1) ? FREQ.ESQUERDA : FREQ.DIREITA;
+                const f = (currentVelocity < 0) ? AJUSTES.freqEsq : AJUSTES.freqDir;
                 tocarBip(f);
-            }, 300);
+            }, AJUSTES.intervaloBip);
         }
-    } else if (!distractionActive) { pararBips(); }
+    } else pararBips();
 }
 
 const btn = document.createElement("button");
 btn.innerHTML = "ATIVAR ÁUDIO";
-btn.style = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:100; padding:15px 30px; background:#51cf66; color:white; border:none; border-radius:30px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);";
+btn.style = "position:fixed; bottom:20px; left:20px; z-index:100; padding:12px 20px; background:#51cf66; color:white; border:none; border-radius:30px; font-weight:bold; cursor:pointer;";
 document.body.appendChild(btn);
-btn.onclick = () => { audioCtx.resume().then(() => btn.remove()); };
+btn.onclick = () => { audioCtx.resume().then(() => { btn.remove(); window.focus(); }); };
 
-// ═══════════════════════════════════════════════════════════════════
-//  🏃 MOVIMENTO E RENDERIZAÇÃO
-// ═══════════════════════════════════════════════════════════════════
-let pixelsPerMeter = 150, blueLineX;
-let person = { x: 0, y: 0 };
-let scrollOffset = 0, driftDirection = 0, distractionActive = false, lastAlertTime = 0;
-let leftSignal = false, rightSignal = false, manualVelocity = 0;
-const LIMITS = { far: { trigger: 1.20, release: 1.05 }, near: { trigger: 0.80, release: 0.95 } };
-
-function updateScale() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - document.getElementById('instrucoes').offsetHeight - 50;
-    blueLineX = canvas.width / 2;
-    pixelsPerMeter = Math.min(150, canvas.width / 4);
-    person.x = blueLineX + (1.0 * pixelsPerMeter);
-    person.y = canvas.height * 0.6;
-}
-window.addEventListener('resize', updateScale);
-setTimeout(updateScale, 100);
-
-let input = { left: false, right: false };
-window.addEventListener('keydown', (e) => { if (e.key === "ArrowLeft") input.left = true; if (e.key === "ArrowRight") input.right = true; });
-window.addEventListener('keyup', (e) => { if (e.key === "ArrowLeft") input.left = false; if (e.key === "ArrowRight") input.right = false; });
+window.addEventListener('keydown', (e) => {
+    if (e.key === "ArrowLeft") { input.left = true; e.preventDefault(); }
+    if (e.key === "ArrowRight") { input.right = true; e.preventDefault(); }
+}, { passive: false });
+window.addEventListener('keyup', (e) => {
+    if (e.key === "ArrowLeft") input.left = false;
+    if (e.key === "ArrowRight") input.right = false;
+});
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touchX = e.touches[0].clientX;
@@ -175,52 +154,57 @@ canvas.addEventListener('touchstart', (e) => {
 }, {passive: false});
 canvas.addEventListener('touchend', () => { input.left = false; input.right = false; });
 
+function updateScale() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // O Marco Zero (Linha Azul) fica à esquerda da tela
+    blueLineX = canvas.width * 0.2; 
+    pixelsPerMeter = Math.min(200, canvas.width / 4);
+    // Posiciona o atleta inicialmente a 1.00 metro da linha azul
+    person.x = blueLineX + (1.0 * pixelsPerMeter);
+    person.y = canvas.height * 0.6;
+}
+window.addEventListener('resize', updateScale);
+updateScale();
+
 function draw(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if(!distractionActive && (timestamp - lastAlertTime > CONFIG.distractionPause)) {
-        driftDirection = Math.random() > 0.5 ? 1 : -1; distractionActive = true;
+    if(timestamp - lastDriftTime > AJUSTES.tempoEntreDrifts) {
+        currentVelocity += (Math.random() > 0.5 ? 1 : -1) * AJUSTES.driftImpulso;
+        lastDriftTime = timestamp;
     }
-    if(distractionActive) person.x += driftDirection * CONFIG.driftSpeed;
-    
-    // Alarme/Histerese
+    if (input.left) currentVelocity -= AJUSTES.aceleracaoAtleta;
+    if (input.right) currentVelocity += AJUSTES.aceleracaoAtleta;
+    currentVelocity = Math.max(-AJUSTES.velMaxima, Math.min(AJUSTES.velMaxima, currentVelocity));
+    person.x += currentVelocity;
+
+    const minX = blueLineX + (AJUSTES.limiteMinMeters * pixelsPerMeter);
+    const maxX = blueLineX + (AJUSTES.limiteMaxMeters * pixelsPerMeter);
+    if (person.x < minX) { person.x = minX; currentVelocity = 0; }
+    if (person.x > maxX) { person.x = maxX; currentVelocity = 0; }
+
     const d = (person.x - blueLineX) / pixelsPerMeter;
-    if(!rightSignal && d >= LIMITS.far.trigger) rightSignal = true;
-    if(rightSignal && d <= LIMITS.far.release) rightSignal = false;
-    if(!leftSignal && d <= LIMITS.near.trigger) leftSignal = true;
-    if(leftSignal && d >= LIMITS.near.release) leftSignal = false;
+    gerenciarSons(d);
 
-    // Controle Manual
-    if (input.left) manualVelocity -= CONFIG.accel;
-    if (input.right) manualVelocity += CONFIG.accel;
-    if (!input.left && !input.right) manualVelocity *= CONFIG.friction;
-    manualVelocity = Math.max(-CONFIG.maxSpeed, Math.min(CONFIG.maxSpeed, manualVelocity));
-    person.x += manualVelocity;
-    if (Math.abs(manualVelocity) > 0.02) distractionActive = false;
-
-    gerenciarSons();
-    scrollOffset = (scrollOffset + CONFIG.scrollSpeed) % 40;
-
-    // Pista
+    // --- DESENHO DO CHÃO ---
     ctx.fillStyle = '#b85450'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const laneW = CONFIG.laneWidth;
-    const offset = blueLineX - (laneW / 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
-    for(let i = -2; i < 3; i++) {
-        let lx = offset + (i * laneW);
-        ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, canvas.height); ctx.stroke();
-    }
     
-    // Zonas
-    const sMin = blueLineX + (0.95 * pixelsPerMeter), sMax = blueLineX + (1.05 * pixelsPerMeter);
-    ctx.fillStyle = 'rgba(81, 207, 102, 0.2)'; ctx.fillRect(sMin, 0, sMax - sMin, canvas.height);
-    ctx.fillStyle = 'white'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('ZONA SEGURA', (sMin+sMax)/2, 20);
+    // LINHAS BRANCAS DA RAIA (Largura Olímpica ~1.22m, centrada no 1.00m)
+    // As bordas ficam em 1.00m - 0.61m e 1.00m + 0.61m
+    const raiaEsq = blueLineX + (0.39 * pixelsPerMeter);
+    const raiaDir = blueLineX + (1.61 * pixelsPerMeter);
+    
+    ctx.strokeStyle = 'white'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(raiaEsq, 0); ctx.lineTo(raiaEsq, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(raiaDir, 0); ctx.lineTo(raiaDir, canvas.height); ctx.stroke();
 
-    // Linha Azul
-    ctx.strokeStyle = '#4dabf7'; ctx.lineWidth = 1;
+    // LINHA AZUL (MARCO ZERO - REFERÊNCIA 0.00m)
+    ctx.strokeStyle = '#4dabf7'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(blueLineX, 0); ctx.lineTo(blueLineX, canvas.height); ctx.stroke();
+    ctx.fillStyle = '#4dabf7'; ctx.font = 'bold 12px Arial';
+    ctx.fillText('MARCO 0.00m', blueLineX + 5, 20);
 
-    // Boneco
+    // DESENHO DO ATLETA
     const x = person.x, y = person.y;
     ctx.fillStyle = leftSignal ? '#ff6b6b' : '#666';
     ctx.beginPath(); ctx.arc(x - 20, y - 8, 9, 0, Math.PI*2); ctx.fill();
