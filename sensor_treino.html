@@ -7,12 +7,26 @@
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { background:#1a1a2e; color:#eee; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; touch-action: none; width: 100vw; height: 100vh; }
-    #info { text-align:center; padding:6px 4px; background:#16213e; font-size:11px; border-bottom: 1px solid #0f3460; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; width: 100%; }
-    .stat { background: #0f3460; padding: 3px 8px; border-radius: 3px; font-family: monospace; font-size: 10px; white-space: nowrap; }
-    canvas { background: #2a2a3a; display:block; width: 100%; height: calc(100vh - 45px); }
+    
+    #instrucoes {
+        background: rgba(22, 33, 62, 0.95);
+        padding: 10px;
+        font-size: 13px;
+        line-height: 1.4;
+        border-bottom: 2px solid #4dabf7;
+        color: #fff;
+    }
+
+    #info { 
+        text-align:center; padding:6px 4px; background:#16213e; 
+        display: flex; justify-content: center; gap: 8px; 
+    }
+    
+    .stat { background: #0f3460; padding: 3px 8px; border-radius: 3px; font-family: monospace; font-size: 24px; white-space: nowrap; }
+    canvas { background: #2a2a3a; display:block; width: 100%; height: 100%; }
     
     @media screen and (orientation: portrait) {
-        #canvas, #info { display: none; }
+        #canvas, #info, #instrucoes { display: none; }
         body::before {
             content: "🔄 Por favor, vire o celular para o modo deitado.";
             display: flex; justify-content: center; align-items: center; height: 100vh;
@@ -23,8 +37,15 @@
 </head>
 <body>
 
+<div id="instrucoes">
+    <strong>Treinamento para deficiente:</strong> Toque na tela da direita para acelerar à direita. Na da esquerda para acelerar à esquerda. 
+    O som para quando estiver na faixa central. O som intermitente é porque está se deslocando para direita ou esquerda. 
+    A frequência mais alta é para a direita. Som contínuo é porque já saiu muito fora da região e permanece até chegar ao centro. 
+    Este treinamento deve auxiliar para a atividade prática.
+</div>
+
 <div id="info">
-    <span class="stat" style="font-size:24px;">Dist: <b id="distVal" style="font-size:32px;">0.00</b>m</span>
+    <span class="stat">Dist: <b id="distVal" style="font-size:32px;">1.00</b>m</span>
 </div>
 
 <canvas id="canvas"></canvas>
@@ -48,7 +69,7 @@ const ctx = canvas.getContext("2d");
 const ui = { dist: document.getElementById("distVal") };
 
 // ═══════════════════════════════════════════════════════════════════
-//  🔊 MOTOR DE ÁUDIO COM ZONA DE SILÊNCIO
+//  🔊 MOTOR DE ÁUDIO BLINDADO
 // ═══════════════════════════════════════════════════════════════════
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 const FREQ = { ESQUERDA: 440, DIREITA: 880 };
@@ -90,31 +111,24 @@ function pararBips() { if (bipInterval) { clearInterval(bipInterval); bipInterva
 
 function gerenciarSons() {
     if (!audioCtx || audioCtx.state !== 'running') return;
-    
     const dist = (person.x - blueLineX) / pixelsPerMeter;
-    // ⭐ LÓGICA DE SILÊNCIO NA FAIXA MORTA (0.95m a 1.05m)
-    const naZonaMorta = (dist >= 0.95 && dist <= 1.05);
-
-    if (naZonaMorta) {
-        pararSomSeguro('ESQ');
-        pararSomSeguro('DIR');
-        pararBips();
-        return; // Sai da função, garantindo silêncio
+    
+    // Silêncio na Faixa Central (Zona de Conforto)
+    if (dist >= 0.95 && dist <= 1.05) {
+        pararSomSeguro('ESQ'); pararSomSeguro('DIR'); pararBips();
+        return;
     }
 
-    // Alarme Esquerdo
     if (leftSignal) {
         if (!oscS1) oscS1 = iniciarSomContinuo(FREQ.ESQUERDA);
         pararBips();
     } else { pararSomSeguro('ESQ'); }
 
-    // Alarme Direito
     if (rightSignal) {
         if (!oscS4) oscS4 = iniciarSomContinuo(FREQ.DIREITA);
         pararBips();
     } else { pararSomSeguro('DIR'); }
 
-    // Bips de Drift
     if (!leftSignal && !rightSignal && distractionActive) {
         if (!bipInterval) {
             bipInterval = setInterval(() => {
@@ -127,153 +141,96 @@ function gerenciarSons() {
 
 const btn = document.createElement("button");
 btn.innerHTML = "ATIVAR ÁUDIO";
-btn.style = "position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:100; padding:12px 24px; background:#51cf66; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;";
+btn.style = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:100; padding:15px 30px; background:#51cf66; color:white; border:none; border-radius:30px; font-weight:bold; cursor:pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);";
 document.body.appendChild(btn);
 btn.onclick = () => { audioCtx.resume().then(() => btn.remove()); };
 
 // ═══════════════════════════════════════════════════════════════════
-//  🏃 LÓGICA DE MOVIMENTO E CONTROLE
+//  🏃 MOVIMENTO E RENDERIZAÇÃO
 // ═══════════════════════════════════════════════════════════════════
 let pixelsPerMeter = 150, blueLineX;
 let person = { x: 0, y: 0 };
+let scrollOffset = 0, driftDirection = 0, distractionActive = false, lastAlertTime = 0;
+let leftSignal = false, rightSignal = false, manualVelocity = 0;
+const LIMITS = { far: { trigger: 1.20, release: 1.05 }, near: { trigger: 0.80, release: 0.95 } };
 
 function updateScale() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - 45;
+    canvas.height = window.innerHeight - document.getElementById('instrucoes').offsetHeight - 50;
     blueLineX = canvas.width / 2;
     pixelsPerMeter = Math.min(150, canvas.width / 4);
     person.x = blueLineX + (1.0 * pixelsPerMeter);
-    person.y = canvas.height * 0.55;
+    person.y = canvas.height * 0.6;
 }
-updateScale();
 window.addEventListener('resize', updateScale);
-
-let scrollOffset = 0;
-let driftDirection = 0, distractionActive = false, lastAlertTime = 0;
-let leftSignal = false, rightSignal = false;
-let manualVelocity = 0;
-
-const LIMITS = { far: { trigger: 1.20, release: 1.05 }, near: { trigger: 0.80, release: 0.95 } };
+setTimeout(updateScale, 100);
 
 let input = { left: false, right: false };
-window.addEventListener('keydown', (e) => {
-    if (e.key === "ArrowLeft") input.left = true;
-    if (e.key === "ArrowRight") input.right = true;
-});
-window.addEventListener('keyup', (e) => {
-    if (e.key === "ArrowLeft") input.left = false;
-    if (e.key === "ArrowRight") input.right = false;
-});
+window.addEventListener('keydown', (e) => { if (e.key === "ArrowLeft") input.left = true; if (e.key === "ArrowRight") input.right = true; });
+window.addEventListener('keyup', (e) => { if (e.key === "ArrowLeft") input.left = false; if (e.key === "ArrowRight") input.right = false; });
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
     const touchX = e.touches[0].clientX;
-    if (touchX < window.innerWidth / 2) input.left = true;
-    else input.right = true;
+    if (touchX < window.innerWidth / 2) input.left = true; else input.right = true;
 }, {passive: false});
 canvas.addEventListener('touchend', () => { input.left = false; input.right = false; });
 
-function aplicarControle() {
-    if (input.left) manualVelocity -= CONFIG.accel;
-    if (input.right) manualVelocity += CONFIG.accel;
-    if (!input.left && !input.right) manualVelocity *= CONFIG.friction;
-    
-    manualVelocity = Math.max(-CONFIG.maxSpeed, Math.min(CONFIG.maxSpeed, manualVelocity));
-    person.x += manualVelocity;
-    if (Math.abs(manualVelocity) > 0.02) { distractionActive = false; }
-}
-
-function updateAlarms() {
-    const dist = (person.x - blueLineX) / pixelsPerMeter;
-    if(!rightSignal && dist >= LIMITS.far.trigger) { rightSignal = true; lastAlertTime = performance.now(); }
-    if(rightSignal && dist <= LIMITS.far.release) rightSignal = false;
-    if(!leftSignal && dist <= LIMITS.near.trigger) { leftSignal = true; lastAlertTime = performance.now(); }
-    if(leftSignal && dist >= LIMITS.near.release) leftSignal = false;
-}
-
 function draw(timestamp) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     if(!distractionActive && (timestamp - lastAlertTime > CONFIG.distractionPause)) {
         driftDirection = Math.random() > 0.5 ? 1 : -1; distractionActive = true;
     }
     if(distractionActive) person.x += driftDirection * CONFIG.driftSpeed;
     
-    updateAlarms();
-    aplicarControle();
+    // Alarme/Histerese
+    const d = (person.x - blueLineX) / pixelsPerMeter;
+    if(!rightSignal && d >= LIMITS.far.trigger) rightSignal = true;
+    if(rightSignal && d <= LIMITS.far.release) rightSignal = false;
+    if(!leftSignal && d <= LIMITS.near.trigger) leftSignal = true;
+    if(leftSignal && d >= LIMITS.near.release) leftSignal = false;
+
+    // Controle Manual
+    if (input.left) manualVelocity -= CONFIG.accel;
+    if (input.right) manualVelocity += CONFIG.accel;
+    if (!input.left && !input.right) manualVelocity *= CONFIG.friction;
+    manualVelocity = Math.max(-CONFIG.maxSpeed, Math.min(CONFIG.maxSpeed, manualVelocity));
+    person.x += manualVelocity;
+    if (Math.abs(manualVelocity) > 0.02) distractionActive = false;
+
     gerenciarSons();
-    
     scrollOffset = (scrollOffset + CONFIG.scrollSpeed) % 40;
 
-    drawTrack();
-    drawZones();
-    drawBlueLine();
-    drawPerson();
-    
-    ui.dist.textContent = ((person.x - blueLineX) / pixelsPerMeter).toFixed(2);
-    requestAnimationFrame(draw);
-}
-
-function drawTrack() {
+    // Pista
     ctx.fillStyle = '#b85450'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     const laneW = CONFIG.laneWidth;
     const offset = blueLineX - (laneW / 2);
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
     for(let i = -2; i < 3; i++) {
-        let x = offset + (i * laneW);
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        let lx = offset + (i * laneW);
+        ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, canvas.height); ctx.stroke();
     }
-}
-
-function drawZones() {
+    
+    // Zonas
     const sMin = blueLineX + (0.95 * pixelsPerMeter), sMax = blueLineX + (1.05 * pixelsPerMeter);
     ctx.fillStyle = 'rgba(81, 207, 102, 0.2)'; ctx.fillRect(sMin, 0, sMax - sMin, canvas.height);
     ctx.fillStyle = 'white'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
     ctx.fillText('ZONA SEGURA', (sMin+sMax)/2, 20);
-}
 
-function drawBlueLine() {
+    // Linha Azul
     ctx.strokeStyle = '#4dabf7'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(blueLineX, 0); ctx.lineTo(blueLineX, canvas.height); ctx.stroke();
-    ctx.fillStyle = 'white'; ctx.font = 'bold 15px monospace';
-    ctx.fillText('0.80m', blueLineX + (0.8 * pixelsPerMeter), 42);
-    ctx.fillText('1.20m', blueLineX + (1.2 * pixelsPerMeter), 42);
-}
 
-function drawPerson() {
+    // Boneco
     const x = person.x, y = person.y;
-    const shoulderY = y - 8;
-
-    // --- OMBRO ESQUERDO (Circuito Independente) ---
     ctx.fillStyle = leftSignal ? '#ff6b6b' : '#666';
-    ctx.shadowColor = leftSignal ? '#ff6b6b' : 'transparent';
-    ctx.shadowBlur = leftSignal ? 15 : 0;
-    ctx.beginPath(); 
-    ctx.arc(x - 20, shoulderY, 9, 0, Math.PI * 2); 
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // --- OMBRO DIREITO (Circuito Independente) ---
+    ctx.beginPath(); ctx.arc(x - 20, y - 8, 9, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = rightSignal ? '#ff6b6b' : '#666';
-    ctx.shadowColor = rightSignal ? '#ff6b6b' : 'transparent';
-    ctx.shadowBlur = rightSignal ? 15 : 0;
-    ctx.beginPath(); 
-    ctx.arc(x + 20, shoulderY, 9, 0, Math.PI * 2); 
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // --- CABEÇA E LETRAS ---
-    ctx.fillStyle = '#f0d0b0'; 
-    ctx.beginPath(); 
-    ctx.arc(x, y - 30, 12, 0, Math.PI * 2); 
-    ctx.fill();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('E', x - 20, shoulderY + 3);
-    ctx.fillText('D', x + 20, shoulderY + 3);
+    ctx.beginPath(); ctx.arc(x + 20, y - 8, 9, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f0d0b0'; ctx.beginPath(); ctx.arc(x, y - 30, 12, 0, Math.PI*2); ctx.fill();
+    
+    ui.dist.textContent = d.toFixed(2);
+    requestAnimationFrame(draw);
 }
-
 requestAnimationFrame(draw);
 </script>
 </body>
