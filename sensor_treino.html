@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simulador - Pista de Atletismo</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { background:#1a1a2e; color:#eee; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; touch-action: none; width: 100vw; height: 100vh; }
+    #info { text-align:center; padding:6px 4px; background:#16213e; font-size:11px; border-bottom: 1px solid #0f3460; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+    .stat { background: #0f3460; padding: 3px 8px; border-radius: 3px; font-family: monospace; font-size: 10px; white-space: nowrap; }
+    canvas { background: #2a2a3a; display:block; width: 100%; height: calc(100vh - 45px); }
+    
+    @media screen and (orientation: portrait) {
+        #canvas, #info { display: none; }
+        body::before {
+            content: "🔄 Por favor, vire o celular para o modo deitado.";
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+            background: #1a1a2e; color: white; text-align: center; padding: 20px; font-weight: bold;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div id="info">
+    <span class="stat" style="font-size:24px;">Dist: <b id="distVal" style="font-size:32px;">0.00</b>m</span>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  ⚙️ CONFIGURAÇÕES
+// ═══════════════════════════════════════════════════════════════════
+const CONFIG = {
+    driftSpeed: 0.10,
+    accel: 0.02,
+    friction: 0.92,
+    maxSpeed: 0.25,
+    distractionPause: 6000,
+    scrollSpeed: 1.0,
+    laneWidth: 160
+};
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const ui = { dist: document.getElementById("distVal") };
+
+// ═══════════════════════════════════════════════════════════════════
+//  🔊 MOTOR DE ÁUDIO COM ZONA DE SILÊNCIO
+// ═══════════════════════════════════════════════════════════════════
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const FREQ = { ESQUERDA: 440, DIREITA: 880 };
+let oscS1 = null, oscS4 = null, bipInterval = null;
+
+function iniciarSomContinuo(f) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.frequency.value = f;
+    g.gain.value = 0.05;
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start();
+    return osc;
+}
+
+function tocarBip(f) {
+    try {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.frequency.value = f;
+        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } catch(e) {}
+}
+
+function pararSomSeguro(tipo) {
+    try {
+        if (tipo === 'ESQ' && oscS1) { oscS1.stop(); oscS1 = null; }
+        if (tipo === 'DIR' && oscS4) { oscS4.stop(); oscS4 = null; }
+    } catch (e) {
+        if (tipo === 'ESQ') oscS1 = null;
+        if (tipo === 'DIR') oscS4 = null;
+    }
+}
+
+function pararBips() { if (bipInterval) { clearInterval(bipInterval); bipInterval = null; } }
+
+function gerenciarSons() {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    
+    const dist = (person.x - blueLineX) / pixelsPerMeter;
+    // ⭐ LÓGICA DE SILÊNCIO NA FAIXA MORTA (0.95m a 1.05m)
+    const naZonaMorta = (dist >= 0.95 && dist <= 1.05);
+
+    if (naZonaMorta) {
+        pararSomSeguro('ESQ');
+        pararSomSeguro('DIR');
+        pararBips();
+        return; // Sai da função, garantindo silêncio
+    }
+
+    // Alarme Esquerdo
+    if (leftSignal) {
+        if (!oscS1) oscS1 = iniciarSomContinuo(FREQ.ESQUERDA);
+        pararBips();
+    } else { pararSomSeguro('ESQ'); }
+
+    // Alarme Direito
+    if (rightSignal) {
+        if (!oscS4) oscS4 = iniciarSomContinuo(FREQ.DIREITA);
+        pararBips();
+    } else { pararSomSeguro('DIR'); }
+
+    // Bips de Drift
+    if (!leftSignal && !rightSignal && distractionActive) {
+        if (!bipInterval) {
+            bipInterval = setInterval(() => {
+                const f = (driftDirection === -1) ? FREQ.ESQUERDA : FREQ.DIREITA;
+                tocarBip(f);
+            }, 300);
+        }
+    } else if (!distractionActive) { pararBips(); }
+}
+
+const btn = document.createElement("button");
+btn.innerHTML = "ATIVAR ÁUDIO";
+btn.style = "position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:100; padding:12px 24px; background:#51cf66; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;";
+document.body.appendChild(btn);
+btn.onclick = () => { audioCtx.resume().then(() => btn.remove()); };
+
+// ═══════════════════════════════════════════════════════════════════
+//  🏃 LÓGICA DE MOVIMENTO E CONTROLE
+// ═══════════════════════════════════════════════════════════════════
+let pixelsPerMeter = 150, blueLineX;
+let person = { x: 0, y: 0 };
+
+function updateScale() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 45;
+    blueLineX = canvas.width / 2;
+    pixelsPerMeter = Math.min(150, canvas.width / 4);
+    person.x = blueLineX + (1.0 * pixelsPerMeter);
+    person.y = canvas.height * 0.55;
+}
+updateScale();
+window.addEventListener('resize', updateScale);
+
+let scrollOffset = 0;
+let driftDirection = 0, distractionActive = false, lastAlertTime = 0;
+let leftSignal = false, rightSignal = false;
+let manualVelocity = 0;
+
+const LIMITS = { far: { trigger: 1.20, release: 1.05 }, near: { trigger: 0.80, release: 0.95 } };
+
+let input = { left: false, right: false };
+window.addEventListener('keydown', (e) => {
+    if (e.key === "ArrowLeft") input.left = true;
+    if (e.key === "ArrowRight") input.right = true;
+});
+window.addEventListener('keyup', (e) => {
+    if (e.key === "ArrowLeft") input.left = false;
+    if (e.key === "ArrowRight") input.right = false;
+});
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touchX = e.touches[0].clientX;
+    if (touchX < window.innerWidth / 2) input.left = true;
+    else input.right = true;
+}, {passive: false});
+canvas.addEventListener('touchend', () => { input.left = false; input.right = false; });
+
+function aplicarControle() {
+    if (input.left) manualVelocity -= CONFIG.accel;
+    if (input.right) manualVelocity += CONFIG.accel;
+    if (!input.left && !input.right) manualVelocity *= CONFIG.friction;
+    
+    manualVelocity = Math.max(-CONFIG.maxSpeed, Math.min(CONFIG.maxSpeed, manualVelocity));
+    person.x += manualVelocity;
+    if (Math.abs(manualVelocity) > 0.02) { distractionActive = false; }
+}
+
+function updateAlarms() {
+    const dist = (person.x - blueLineX) / pixelsPerMeter;
+    if(!rightSignal && dist >= LIMITS.far.trigger) { rightSignal = true; lastAlertTime = performance.now(); }
+    if(rightSignal && dist <= LIMITS.far.release) rightSignal = false;
+    if(!leftSignal && dist <= LIMITS.near.trigger) { leftSignal = true; lastAlertTime = performance.now(); }
+    if(leftSignal && dist >= LIMITS.near.release) leftSignal = false;
+}
+
+function draw(timestamp) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    if(!distractionActive && (timestamp - lastAlertTime > CONFIG.distractionPause)) {
+        driftDirection = Math.random() > 0.5 ? 1 : -1; distractionActive = true;
+    }
+    if(distractionActive) person.x += driftDirection * CONFIG.driftSpeed;
+    
+    updateAlarms();
+    aplicarControle();
+    gerenciarSons();
+    
+    scrollOffset = (scrollOffset + CONFIG.scrollSpeed) % 40;
+
+    drawTrack();
+    drawZones();
+    drawBlueLine();
+    drawPerson();
+    
+    ui.dist.textContent = ((person.x - blueLineX) / pixelsPerMeter).toFixed(2);
+    requestAnimationFrame(draw);
+}
+
+function drawTrack() {
+    ctx.fillStyle = '#b85450'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const laneW = CONFIG.laneWidth;
+    const offset = blueLineX - (laneW / 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+    for(let i = -2; i < 3; i++) {
+        let x = offset + (i * laneW);
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+}
+
+function drawZones() {
+    const sMin = blueLineX + (0.95 * pixelsPerMeter), sMax = blueLineX + (1.05 * pixelsPerMeter);
+    ctx.fillStyle = 'rgba(81, 207, 102, 0.2)'; ctx.fillRect(sMin, 0, sMax - sMin, canvas.height);
+    ctx.fillStyle = 'white'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('ZONA SEGURA', (sMin+sMax)/2, 20);
+}
+
+function drawBlueLine() {
+    ctx.strokeStyle = '#4dabf7'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(blueLineX, 0); ctx.lineTo(blueLineX, canvas.height); ctx.stroke();
+    ctx.fillStyle = 'white'; ctx.font = 'bold 15px monospace';
+    ctx.fillText('0.80m', blueLineX + (0.8 * pixelsPerMeter), 42);
+    ctx.fillText('1.20m', blueLineX + (1.2 * pixelsPerMeter), 42);
+}
+
+function drawPerson() {
+    const x = person.x, y = person.y;
+    const shoulderY = y - 8;
+
+    // --- OMBRO ESQUERDO (Circuito Independente) ---
+    ctx.fillStyle = leftSignal ? '#ff6b6b' : '#666';
+    ctx.shadowColor = leftSignal ? '#ff6b6b' : 'transparent';
+    ctx.shadowBlur = leftSignal ? 15 : 0;
+    ctx.beginPath(); 
+    ctx.arc(x - 20, shoulderY, 9, 0, Math.PI * 2); 
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // --- OMBRO DIREITO (Circuito Independente) ---
+    ctx.fillStyle = rightSignal ? '#ff6b6b' : '#666';
+    ctx.shadowColor = rightSignal ? '#ff6b6b' : 'transparent';
+    ctx.shadowBlur = rightSignal ? 15 : 0;
+    ctx.beginPath(); 
+    ctx.arc(x + 20, shoulderY, 9, 0, Math.PI * 2); 
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // --- CABEÇA E LETRAS ---
+    ctx.fillStyle = '#f0d0b0'; 
+    ctx.beginPath(); 
+    ctx.arc(x, y - 30, 12, 0, Math.PI * 2); 
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('E', x - 20, shoulderY + 3);
+    ctx.fillText('D', x + 20, shoulderY + 3);
+}
+
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
