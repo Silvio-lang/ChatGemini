@@ -25,10 +25,10 @@
         <div id="chk-centered" class="chk-item">○ NO CENTRO</div>
     </div>
 
-    <div class="stat" id="objective-text">Pegue as frutas! 🍎</div>
+    <div class="stat" id="objective-text">Pegue os prêmios! 💰</div>
 </div>
 
-<div id="msg">PARABÉNS!  ESTACIONADO! 🌟</div>
+<div id="msg">PARABÉNS! ESTACIONADO! 🌟</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -41,6 +41,25 @@ const scoreEl = document.getElementById('score');
 const msgEl = document.getElementById('msg');
 const objText = document.getElementById('objective-text');
 const checklistEl = document.getElementById('parking-checklist');
+
+// --- ÁUDIO ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function initAudio() { if (audioCtx.state === 'suspended') audioCtx.resume(); }
+
+function playSuccessSound() {
+    const now = audioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+        gain.gain.setValueAtTime(0.2, now + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.1); osc.stop(now + i * 0.1 + 0.4);
+    });
+}
 
 function resize() {
     width = canvas.width = window.innerWidth;
@@ -63,13 +82,13 @@ let car = {
 let fruits = [];
 let parkingSpot = null;
 let difficultyLevel = 1;
-const fruitTypes = ['🍎', '🍌', '🍇', '🍓', '🍒', '🍊'];
+const rewardTypes = ['CASH', 'COIN', 'GOLD_BAG', 'APPLE'];
 
 function spawnFruit() {
     fruits.push({
         x: 50 + Math.random() * (width - 100),
         y: 50 + Math.random() * (height - 100),
-        type: fruitTypes[Math.floor(Math.random() * fruitTypes.length)]
+        type: rewardTypes[Math.floor(Math.random() * rewardTypes.length)]
     });
 }
 
@@ -84,7 +103,6 @@ function spawnParkingSpot() {
         x = 100 + Math.random() * (width - 200);
         y = 100 + Math.random() * (height - 200);
     }
-
     parkingSpot = {
         x: x, y: y, w: w, h: h,
         angle: Math.random() * Math.PI,
@@ -94,10 +112,9 @@ function spawnParkingSpot() {
     objText.innerText = "Nível " + difficultyLevel + ": Estacione! 🅿️";
 }
 
-// Inicializar
 function startNewRound() {
-    const fruitCount = 3 + Math.floor(score / 200);
-    for(let i=0; i<fruitCount; i++) spawnFruit();
+    const count = 3 + Math.floor(score / 200);
+    for(let i=0; i<count; i++) spawnFruit();
 }
 startNewRound();
 
@@ -107,129 +124,96 @@ function updatePointer(e) {
     const rect = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    pointer.x = cx - rect.left;
-    pointer.y = cy - rect.top;
+    pointer.x = cx - rect.left; pointer.y = cy - rect.top;
 }
 canvas.addEventListener('mousedown', (e) => { 
-    pointer.active = true; 
-    updatePointer(e); 
-    // Penalidade por clique (Opção B: -1 ponto, mínimo 0)
-    if (score > 0) {
-        score--;
-        scoreEl.innerText = score;
-    }
+    initAudio(); pointer.active = true; updatePointer(e); 
+    if (score > 0) { score--; scoreEl.innerText = score; }
 });
 canvas.addEventListener('mousemove', (e) => { if(pointer.active) updatePointer(e); });
 window.addEventListener('mouseup', () => { pointer.active = false; });
 canvas.addEventListener('touchstart', (e) => { 
-    e.preventDefault(); 
-    pointer.active = true; 
-    updatePointer(e); 
-    // Penalidade por toque (Opção B: -1 ponto, mínimo 0)
-    if (score > 0) {
-        score--;
-        scoreEl.innerText = score;
-    }
+    e.preventDefault(); initAudio(); pointer.active = true; updatePointer(e); 
+    if (score > 0) { score--; scoreEl.innerText = score; }
 }, {passive: false});
 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updatePointer(e); }, {passive: false});
 canvas.addEventListener('touchend', () => { pointer.active = false; }, {passive: false});
 
+// --- DESENHO CUSTOMIZADO ---
+function drawReward(f) {
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    if (f.type === 'CASH') {
+        ctx.fillStyle = '#2e7d32'; ctx.fillRect(-20, -12, 40, 24);
+        ctx.strokeStyle = '#a5d6a7'; ctx.lineWidth = 2; ctx.strokeRect(-18, -10, 36, 20);
+        ctx.fillStyle = '#a5d6a7'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillText('$', 0, 6);
+    } else if (f.type === 'COIN') {
+        ctx.fillStyle = '#ffd700'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#daa520'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = '#daa520'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.fillText('$', 0, 5);
+    } else if (f.type === 'GOLD_BAG') {
+        ctx.fillStyle = '#8d6e63'; ctx.beginPath();
+        ctx.moveTo(-10, 10); ctx.quadraticCurveTo(-15, 10, -15, 0); ctx.quadraticCurveTo(-15, -10, 0, -15); ctx.quadraticCurveTo(15, -10, 15, 0); ctx.quadraticCurveTo(15, 10, 10, 10); ctx.fill();
+        ctx.fillStyle = '#ffd700'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.fillText('$', 0, -2);
+    } else {
+        ctx.fillStyle = 'red'; ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'green'; ctx.fillRect(-2, -18, 4, 8);
+    }
+    ctx.fillStyle = "#FFD700"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = 'center'; ctx.fillText("+10", 0, 30);
+    ctx.restore();
+}
+
 // --- LÓGICA ---
 function checkCollisions() {
-    // 1. Frutas
     for (let i = fruits.length - 1; i >= 0; i--) {
         const f = fruits[i];
-        const dist = Math.sqrt((car.x - f.x)**2 + (car.y - f.y)**2);
-        if (dist < 40) {
-            fruits.splice(i, 1);
-            score += 10;
-            scoreEl.innerText = score;
+        if (Math.sqrt((car.x - f.x)**2 + (car.y - f.y)**2) < 40) {
+            fruits.splice(i, 1); score += 10; scoreEl.innerText = score;
             if (fruits.length === 0) spawnParkingSpot();
         }
     }
 
-    // 2. Vaga (COM CHECKLIST)
     if (parkingSpot && parkingSpot.active) {
         checklistEl.style.display = 'flex';
-        
-        // Centro do carro (ponto médio entre os eixos para simplificar)
         const carCenterX = car.x + (L/2) * Math.cos(car.theta);
         const carCenterY = car.y + (L/2) * Math.sin(car.theta);
-        
-        // Coordenadas Locais (Translação e Rotação)
-        // Movemos a origem para o centro da vaga e rotacionamos para o sistema da vaga
         const dx = carCenterX - parkingSpot.x;
         const dy = carCenterY - parkingSpot.y;
-        
-        // Rotacionar o vetor (dx, dy) pelo ângulo oposto da vaga
         const localX = dx * Math.cos(-parkingSpot.angle) - dy * Math.sin(-parkingSpot.angle);
         const localY = dx * Math.sin(-parkingSpot.angle) + dy * Math.cos(-parkingSpot.angle);
 
-        // Diferença de ângulo considerando que o carro desenhado "frente" está no eixo X (car.theta)
-        // E a vaga é um retângulo vertical (W < H) ou horizontal.
-        // Vamos normalizar a diferença de ângulo para [0, PI/2]
         let angleDiff = Math.abs(car.theta - (parkingSpot.angle + Math.PI/2)) % Math.PI;
         if (angleDiff > Math.PI / 2) angleDiff = Math.PI - angleDiff;
 
-        // Requisitos Refinados (Ajustados para uma criança de 4 anos)
-        // 1. DENTRO: O centro do carro está dentro dos limites do retângulo da vaga
         const isInside = Math.abs(localX) < parkingSpot.w/2 && Math.abs(localY) < parkingSpot.h/2;
-        
-        // 2. ALINHADO: Mais tolerante (25 graus em vez de 12)
         const isAligned = angleDiff < (25 * Math.PI / 180); 
-
-        // 3. NO CENTRO: Ajustado para 6 unidades (equilíbrio entre desafio e precisão)
         const isCentered = Math.abs(localX) < 6 && Math.abs(localY) < 6; 
 
-        // Atualiza UI
-        const updateUI = (id, val, text) => {
+        const upd = (id, v, t) => {
             const el = document.getElementById(id);
-            if (val) {
-                el.style.color = "#00FF00";
-                el.innerText = "✅ " + text;
-            } else {
-                el.style.color = "#888";
-                el.innerText = "○ " + text;
-            }
+            el.style.color = v ? "#00FF00" : "#888";
+            el.innerText = (v ? "✅ " : "○ ") + t;
         };
+        upd('chk-inside', isInside, "DENTRO"); upd('chk-aligned', isAligned, "ALINHADO"); upd('chk-centered', isCentered, "NO CENTRO");
 
-        updateUI('chk-inside', isInside, "DENTRO");
-        updateUI('chk-aligned', isAligned, "ALINHADO");
-        updateUI('chk-centered', isCentered, "NO CENTRO");
+        if (isInside && isAligned && isCentered) parkingSpot.color = 'rgba(0, 255, 0, 0.9)';
+        else if (isInside) parkingSpot.color = 'rgba(255, 165, 0, 0.6)';
+        else parkingSpot.color = 'rgba(76, 175, 80, 0.4)';
 
-        // Feedback visual da vaga
-        if (isInside && isAligned && isCentered) {
-            parkingSpot.color = 'rgba(0, 255, 0, 0.9)';
-        } else if (isInside) {
-            parkingSpot.color = 'rgba(255, 165, 0, 0.6)';
-        } else {
-            parkingSpot.color = 'rgba(76, 175, 80, 0.4)';
-        }
-
-        // Sucesso: Mais permissivo na velocidade (0.6 em vez de 0.3)
         if (isCentered && isAligned && Math.abs(car.v) < 0.6) {
-            parkingSpot.active = false;
-            score += 50 * difficultyLevel;
-            scoreEl.innerText = score;
-            msgEl.style.display = 'block';
-            difficultyLevel++;
-            checklistEl.style.display = 'none';
+            parkingSpot.active = false; score += 50 * difficultyLevel; scoreEl.innerText = score;
+            msgEl.style.display = 'block'; playSuccessSound(); difficultyLevel++; checklistEl.style.display = 'none';
             setTimeout(() => {
-                msgEl.style.display = 'none';
-                parkingSpot = null;
-                startNewRound();
-                objText.innerText = "Pegue as frutas! 🍎";
+                msgEl.style.display = 'none'; parkingSpot = null; startNewRound();
+                objText.innerText = "Pegue os prêmios! 💰";
             }, 2000);
         }
-    } else {
-        checklistEl.style.display = 'none';
-    }
+    } else { checklistEl.style.display = 'none'; }
 }
 
 function processControl() {
     const vCX = car.x + (L/2) * Math.cos(car.theta);
     const vCY = car.y + (L/2) * Math.sin(car.theta);
-
     if (!pointer.active) { car.targetV = 0; car.alpha = 0; }
     else {
         const dx = pointer.x - vCX, dy = pointer.y - vCY;
@@ -238,14 +222,11 @@ function processControl() {
         else {
             const a = Math.atan2(dy, dx);
             let rel = a - car.theta;
-            while (rel > Math.PI) rel -= Math.PI * 2;
-            while (rel < -Math.PI) rel += Math.PI * 2;
+            while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2;
             const deg = rel * 180 / Math.PI;
-
             if (Math.abs(deg) < 60) car.targetV = 2;
             else if (Math.abs(deg) > 120) car.targetV = -1.25;
             else car.targetV = 0;
-
             if (deg > 15 && deg < 165) car.alpha = Math.PI / 4;
             else if (deg < -15 && deg > -165) car.alpha = -Math.PI / 4;
             else car.alpha = 0;
@@ -258,64 +239,43 @@ function processControl() {
 
 function draw() {
     ctx.clearRect(0, 0, width, height);
-    ctx.strokeStyle = '#444';
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
     for(let i=0; i<width; i+=80) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,height); ctx.stroke(); }
     for(let j=0; j<height; j+=80) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(width,j); ctx.stroke(); }
 
     if (parkingSpot) {
-        ctx.save();
-        ctx.translate(parkingSpot.x, parkingSpot.y);
-        ctx.rotate(parkingSpot.angle);
+        ctx.save(); ctx.translate(parkingSpot.x, parkingSpot.y); ctx.rotate(parkingSpot.angle);
         ctx.fillStyle = parkingSpot.active ? parkingSpot.color : 'rgba(255, 215, 0, 0.6)';
         ctx.fillRect(-parkingSpot.w/2, -parkingSpot.h/2, parkingSpot.w, parkingSpot.h);
-        ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]);
-        ctx.strokeRect(-parkingSpot.w/2, -parkingSpot.h/2, parkingSpot.w, parkingSpot.h);
-        ctx.rotate(-parkingSpot.angle); 
-        ctx.fillStyle = "white"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = 'center';
-        ctx.fillText("+" + (50 * difficultyLevel), 0, 0);
-        ctx.restore();
+        ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.strokeRect(-parkingSpot.w/2, -parkingSpot.h/2, parkingSpot.w, parkingSpot.h);
+        ctx.rotate(-parkingSpot.angle); ctx.fillStyle = "white"; ctx.font = "bold 16px sans-serif"; ctx.textAlign = 'center';
+        ctx.fillText("+" + (50 * difficultyLevel), 0, 0); ctx.restore();
     }
 
-    ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    fruits.forEach(f => { 
-        ctx.fillText(f.type, f.x, f.y); 
-        ctx.fillStyle = "#FFD700"; ctx.font = "12px sans-serif";
-        ctx.fillText("+10", f.x, f.y + 25);
-        ctx.font = '30px serif';
-    });
+    fruits.forEach(f => drawReward(f));
 
     if (pointer.active) {
-        const vCX = car.x + (L/2) * Math.cos(car.theta);
-        const vCY = car.y + (L/2) * Math.sin(car.theta);
+        const vCX = car.x + (L/2) * Math.cos(car.theta), vCY = car.y + (L/2) * Math.sin(car.theta);
         ctx.save(); ctx.translate(vCX, vCY); ctx.rotate(car.theta); ctx.setLineDash([5, 5]);
         const dL = (ag, d, c) => {
-            const r = ag * Math.PI / 180;
-            ctx.strokeStyle = c; ctx.beginPath(); 
-            // Começa 75 pixels (~2.0cm) para trás do ponto de origem
-            ctx.moveTo(Math.cos(r) * -75, Math.sin(r) * -75); 
-            ctx.lineTo(Math.cos(r) * d, Math.sin(r) * d); 
-            ctx.stroke();
+            const r = ag * Math.PI / 180; ctx.strokeStyle = c; ctx.beginPath(); 
+            ctx.moveTo(Math.cos(r) * -75, Math.sin(r) * -75); ctx.lineTo(Math.cos(r) * d, Math.sin(r) * d); ctx.stroke();
         };
         dL(15, 300, 'rgba(100, 255, 100, 0.4)'); dL(-15, 300, 'rgba(100, 255, 100, 0.4)');
         dL(60, 300, 'rgba(255, 100, 100, 0.4)'); dL(-60, 300, 'rgba(255, 100, 100, 0.4)');
-        dL(120, 100, 'rgba(255, 100, 100, 0.2)'); dL(-120, 100, 'rgba(255, 100, 100, 0.2)');
         ctx.restore();
     }
 
-    ctx.save();
-    ctx.translate(car.x, car.y); ctx.rotate(car.theta);
+    ctx.save(); ctx.translate(car.x, car.y); ctx.rotate(car.theta);
     const hH = carBodyH / 2;
     ctx.fillStyle = car.color; ctx.fillRect(-10, -hH, carBodyW, carBodyH);
     ctx.strokeStyle = '#333'; ctx.strokeRect(-10, -hH, carBodyW, carBodyH);
-    ctx.fillStyle = 'rgba(173, 216, 230, 0.8)';
-    ctx.fillRect(L-10, -hH+4, 10, carBodyH-8);
+    ctx.fillStyle = 'rgba(173, 216, 230, 0.8)'; ctx.fillRect(L-10, -hH+4, 10, carBodyH-8);
     ctx.fillRect(-6, -hH+4, 8, carBodyH-8);
-    ctx.fillRect(12, -hH+2, 20, 4); ctx.fillRect(12, hH-6, 20, 4);
     ctx.fillStyle = '#ffff00';
     ctx.beginPath(); ctx.arc(L+10, -12, 5, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(L+10, 12, 5, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#A0522D';
-    ctx.fillRect(-5, -hH-6, 18, 10); ctx.fillRect(-5, hH-4, 18, 10);
+    ctx.fillStyle = '#A0522D'; ctx.fillRect(-5, -hH-6, 18, 10); ctx.fillRect(-5, hH-4, 18, 10);
     const dW = (y) => {
         ctx.save(); ctx.translate(L, y); ctx.rotate(car.alpha); ctx.fillStyle = 'red';
         ctx.fillRect(-10, -5, 20, 10); ctx.restore();
@@ -326,14 +286,11 @@ function draw() {
 
 function loop() {
     processControl();
-    car.x += car.v * Math.cos(car.theta);
-    car.y += car.v * Math.sin(car.theta);
+    car.x += car.v * Math.cos(car.theta); car.y += car.v * Math.sin(car.theta);
     car.theta += (car.v / L) * Math.tan(car.alpha);
     if (car.x < 0) car.x = width; if (car.x > width) car.x = 0;
     if (car.y < 0) car.y = height; if (car.y > height) car.y = 0;
-    checkCollisions();
-    draw();
-    requestAnimationFrame(loop);
+    checkCollisions(); draw(); requestAnimationFrame(loop);
 }
 loop();
 </script>
