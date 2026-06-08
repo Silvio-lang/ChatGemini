@@ -110,10 +110,27 @@ function updatePointer(e) {
     pointer.x = cx - rect.left;
     pointer.y = cy - rect.top;
 }
-canvas.addEventListener('mousedown', (e) => { pointer.active = true; updatePointer(e); });
+canvas.addEventListener('mousedown', (e) => { 
+    pointer.active = true; 
+    updatePointer(e); 
+    // Penalidade por clique (Opção B: -1 ponto, mínimo 0)
+    if (score > 0) {
+        score--;
+        scoreEl.innerText = score;
+    }
+});
 canvas.addEventListener('mousemove', (e) => { if(pointer.active) updatePointer(e); });
 window.addEventListener('mouseup', () => { pointer.active = false; });
-canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pointer.active = true; updatePointer(e); }, {passive: false});
+canvas.addEventListener('touchstart', (e) => { 
+    e.preventDefault(); 
+    pointer.active = true; 
+    updatePointer(e); 
+    // Penalidade por toque (Opção B: -1 ponto, mínimo 0)
+    if (score > 0) {
+        score--;
+        scoreEl.innerText = score;
+    }
+}, {passive: false});
 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updatePointer(e); }, {passive: false});
 canvas.addEventListener('touchend', () => { pointer.active = false; }, {passive: false});
 
@@ -161,8 +178,8 @@ function checkCollisions() {
         // 2. ALINHADO: Mais tolerante (25 graus em vez de 12)
         const isAligned = angleDiff < (25 * Math.PI / 180); 
 
-        // 3. NO CENTRO: Voltando para uma exigência mais rigorosa (3 unidades)
-        const isCentered = Math.abs(localX) < 3 && Math.abs(localY) < 3; 
+        // 3. NO CENTRO: Ajustado para 6 unidades (equilíbrio entre desafio e precisão)
+        const isCentered = Math.abs(localX) < 6 && Math.abs(localY) < 6; 
 
         // Atualiza UI
         const updateUI = (id, val, text) => {
