@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Carrinho dos Netos do Vovô Silvio</title>
+    <title>Carrinho do vô Silvio</title>
     <style>
         body { margin: 0; overflow: hidden; background: #222; font-family: 'Segoe UI', sans-serif; touch-action: none; }
         canvas { display: block; background: #333; }
@@ -28,7 +28,7 @@
     <div class="stat" id="objective-text">Pegue as frutas! 🍎</div>
 </div>
 
-<div id="msg">PARABÉNS! 🌟</div>
+<div id="msg">PARABÉNS!  ESTACIONADO! 🌟</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -242,8 +242,8 @@ function processControl() {
             while (rel < -Math.PI) rel += Math.PI * 2;
             const deg = rel * 180 / Math.PI;
 
-            if (Math.abs(deg) < 60) car.targetV = 4;
-            else if (Math.abs(deg) > 120) car.targetV = -2.5;
+            if (Math.abs(deg) < 60) car.targetV = 2;
+            else if (Math.abs(deg) > 120) car.targetV = -1.25;
             else car.targetV = 0;
 
             if (deg > 15 && deg < 165) car.alpha = Math.PI / 4;
@@ -251,7 +251,7 @@ function processControl() {
             else car.alpha = 0;
         }
     }
-    const acc = 0.08;
+    const acc = 0.04;
     if (car.v < car.targetV) car.v = Math.min(car.targetV, car.v + acc);
     else if (car.v > car.targetV) car.v = Math.max(car.targetV, car.v - acc);
 }
