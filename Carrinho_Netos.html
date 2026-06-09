@@ -3,28 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Carrinho do vô Silvio</title>
+    <title>Carrinho do Vô Silvio</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #222; font-family: 'Segoe UI', sans-serif; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #222; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
         canvas { display: block; background: #333; }
-        #hud { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: center; gap: 15px; pointer-events: none; z-index: 10; }
-        .stat { color: white; background: rgba(0,0,0,0.7); padding: 8px 15px; border-radius: 15px; font-size: 1.2em; border: 2px solid #FFD700; display: flex; align-items: center; }
-        #parking-checklist { border-color: #00FF00; font-size: 0.9em; flex-direction: column; align-items: flex-start; display: none; min-width: 120px; }
+        #hud { position: absolute; top: 10px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; pointer-events: none; z-index: 10; }
+        .stat { color: white; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 12px; font-size: 1em; border: 2px solid #FFD700; display: flex; align-items: center; }
+        #parking-checklist { border-color: #00FF00; font-size: 0.8em; flex-direction: column; align-items: flex-start; display: none; min-width: 100px; }
         .chk-item { color: #888; transition: color 0.3s; }
-        #msg { position: absolute; top: 50%; width: 100%; text-align: center; color: #FFD700; font-size: 3em; font-weight: bold; text-shadow: 2px 2px 5px black; display: none; pointer-events: none; z-index: 100; }
+        #msg { position: absolute; top: 40%; width: 100%; text-align: center; color: #FFD700; font-size: 2.5em; font-weight: bold; text-shadow: 2px 2px 5px black; display: none; pointer-events: none; z-index: 100; }
+        
+        /* NOVO PAINEL DE CONTROLE */
+        #controls { position: absolute; bottom: 20px; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 200; }
+        .btn-row { display: flex; gap: 20px; justify-content: center; width: 100%; }
+        .btn { 
+            width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: white; font-size: 0.9em;
+            background: rgba(0,0,0,0.5); touch-action: none;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .btn:active { transform: scale(0.9); background: rgba(255, 215, 0, 0.6); }
+        .btn-gear { width: 60px; border-radius: 10px; background: rgba(50, 50, 255, 0.4); }
+        .btn-dir { background: rgba(50, 255, 50, 0.3); }
+        .btn-active { border-color: #FFD700; background: rgba(255, 215, 0, 0.8) !important; color: #000; }
     </style>
 </head>
 <body>
 
 <div id="hud">
     <div class="stat">PONTOS: <span id="score">0</span></div>
-    
     <div id="parking-checklist" class="stat">
         <div id="chk-inside" class="chk-item">○ DENTRO</div>
         <div id="chk-aligned" class="chk-item">○ ALINHADO</div>
         <div id="chk-centered" class="chk-item">○ NO CENTRO</div>
     </div>
-
     <div class="stat" id="objective-text">Pegue os prêmios! 💰</div>
 </div>
 
@@ -72,6 +85,7 @@ resize();
 const L = 50; 
 const carBodyW = L + 20;
 const carBodyH = 40;
+const CM_TO_PX = 37.8; // Aproximadamente 96 dpi / 2.54
 
 let car = {
     x: width / 2, y: height / 2,
@@ -118,26 +132,83 @@ function startNewRound() {
 }
 startNewRound();
 
-// --- INPUTS ---
-let pointer = { x: 0, y: 0, active: false };
-function updatePointer(e) {
+// --- SISTEMA DE INPUTS ---
+let isPointerDown = false;
+let pointerPos = { x: 0, y: 0 };
+
+const updatePointer = (e) => {
     const rect = canvas.getBoundingClientRect();
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    pointer.x = cx - rect.left; pointer.y = cy - rect.top;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    pointerPos.x = clientX - rect.left;
+    pointerPos.y = clientY - rect.top;
+};
+
+canvas.addEventListener('mousedown', (e) => { isPointerDown = true; updatePointer(e); initAudio(); });
+canvas.addEventListener('mousemove', (e) => { if(isPointerDown) updatePointer(e); });
+canvas.addEventListener('mouseup', () => { isPointerDown = false; });
+canvas.addEventListener('touchstart', (e) => { isPointerDown = true; updatePointer(e); initAudio(); }, {passive: false});
+canvas.addEventListener('touchmove', (e) => { if(isPointerDown) { e.preventDefault(); updatePointer(e); } }, {passive: false});
+canvas.addEventListener('touchend', () => { isPointerDown = false; });
+
+function processControl() {
+    car.targetV = 0;
+
+    if (isPointerDown) {
+        // Centro geométrico entre as rodas (L=50, então 25px à frente do eixo traseiro)
+        const pivotX = car.x + (L / 2) * Math.cos(car.theta);
+        const pivotY = car.y + (L / 2) * Math.sin(car.theta);
+
+        const dx = pointerPos.x - pivotX;
+        const dy = pointerPos.y - pivotY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // Coordenadas locais relativas ao centro geométrico
+        const cosT = Math.cos(-car.theta);
+        const sinT = Math.sin(-car.theta);
+        const localX = dx * cosT - dy * sinT;
+        const localY = dx * sinT + dy * cosT;
+
+        // Teto (Corpo do carro)
+        const hH = carBodyH / 2;
+        const isOnRoof = localX > -35 && localX < 35 && localY > -hH && localY < hH;
+
+        if (isOnRoof) {
+            car.alpha = 0; // Endireita
+        } else if (dist > 20) {
+            // Ângulo absoluto do toque relativo ao centro do carro (0 a PI)
+            let angleToClick = Math.atan2(dy, dx) - car.theta;
+            while (angleToClick > Math.PI) angleToClick -= Math.PI * 2;
+            while (angleToClick < -Math.PI) angleToClick += Math.PI * 2;
+            
+            const absAngle = Math.abs(angleToClick); // 0 (frente), PI (ré), PI/2 (lados)
+
+            // 1. ZONA DE MOVIMENTO (Cones de 60º total -> 30º para cada lado)
+            const moveLimit = 30 * Math.PI / 180;
+            if (absAngle < moveLimit) {
+                car.targetV = 2; // Frente
+            } else if (absAngle > (Math.PI - moveLimit)) {
+                car.targetV = -1.25; // Ré
+            } 
+            // 2. ZONA DE DIREÇÃO (Banda lateral de 30º centrada em 90º -> de 75º a 105º)
+            else {
+                const steerCenter = Math.PI / 2;
+                const steerHalfWidth = 15 * Math.PI / 180; // Total 30º
+                
+                if (absAngle > (steerCenter - steerHalfWidth) && absAngle < (steerCenter + steerHalfWidth)) {
+                    if (angleToClick < 0) car.alpha = -Math.PI / 4; // Esq (ângulo negativo no canvas)
+                    else car.alpha = Math.PI / 4; // Dir
+                }
+                // 3. ZONA MORTA (Entre os limites acima)
+                // Não faz nada: car.targetV continua 0 e car.alpha permanece o anterior.
+            }
+        }
+    }
+
+    const acc = 0.04;
+    if (car.v < car.targetV) car.v = Math.min(car.targetV, car.v + acc);
+    else if (car.v > car.targetV) car.v = Math.max(car.targetV, car.v - acc);
 }
-canvas.addEventListener('mousedown', (e) => { 
-    initAudio(); pointer.active = true; updatePointer(e); 
-    if (score > 0) { score--; scoreEl.innerText = score; }
-});
-canvas.addEventListener('mousemove', (e) => { if(pointer.active) updatePointer(e); });
-window.addEventListener('mouseup', () => { pointer.active = false; });
-canvas.addEventListener('touchstart', (e) => { 
-    e.preventDefault(); initAudio(); pointer.active = true; updatePointer(e); 
-    if (score > 0) { score--; scoreEl.innerText = score; }
-}, {passive: false});
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); updatePointer(e); }, {passive: false});
-canvas.addEventListener('touchend', () => { pointer.active = false; }, {passive: false});
 
 // --- DESENHO CUSTOMIZADO ---
 function drawReward(f) {
@@ -211,32 +282,6 @@ function checkCollisions() {
     } else { checklistEl.style.display = 'none'; }
 }
 
-function processControl() {
-    const vCX = car.x + (L/2) * Math.cos(car.theta);
-    const vCY = car.y + (L/2) * Math.sin(car.theta);
-    if (!pointer.active) { car.targetV = 0; car.alpha = 0; }
-    else {
-        const dx = pointer.x - vCX, dy = pointer.y - vCY;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < 20) { car.targetV = 0; car.alpha = 0; }
-        else {
-            const a = Math.atan2(dy, dx);
-            let rel = a - car.theta;
-            while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2;
-            const deg = rel * 180 / Math.PI;
-            if (Math.abs(deg) < 60) car.targetV = 2;
-            else if (Math.abs(deg) > 120) car.targetV = -1.25;
-            else car.targetV = 0;
-            if (deg > 15 && deg < 165) car.alpha = Math.PI / 4;
-            else if (deg < -15 && deg > -165) car.alpha = -Math.PI / 4;
-            else car.alpha = 0;
-        }
-    }
-    const acc = 0.04;
-    if (car.v < car.targetV) car.v = Math.min(car.targetV, car.v + acc);
-    else if (car.v > car.targetV) car.v = Math.max(car.targetV, car.v - acc);
-}
-
 function draw() {
     ctx.clearRect(0, 0, width, height);
     ctx.strokeStyle = '#444'; ctx.lineWidth = 1;
@@ -254,19 +299,30 @@ function draw() {
 
     fruits.forEach(f => drawReward(f));
 
-    if (pointer.active) {
-        const vCX = car.x + (L/2) * Math.cos(car.theta), vCY = car.y + (L/2) * Math.sin(car.theta);
-        ctx.save(); ctx.translate(vCX, vCY); ctx.rotate(car.theta); ctx.setLineDash([5, 5]);
-        const dL = (ag, d, c) => {
-            const r = ag * Math.PI / 180; ctx.strokeStyle = c; ctx.beginPath(); 
-            ctx.moveTo(Math.cos(r) * -75, Math.sin(r) * -75); ctx.lineTo(Math.cos(r) * d, Math.sin(r) * d); ctx.stroke();
-        };
-        dL(15, 300, 'rgba(100, 255, 100, 0.4)'); dL(-15, 300, 'rgba(100, 255, 100, 0.4)');
-        dL(60, 300, 'rgba(255, 100, 100, 0.4)'); dL(-60, 300, 'rgba(255, 100, 100, 0.4)');
-        ctx.restore();
-    }
-
     ctx.save(); ctx.translate(car.x, car.y); ctx.rotate(car.theta);
+
+    // --- LINHAS GUIAS DE CONTROLE (Centralizadas no entre-eixos L/2) ---
+    ctx.save();
+    ctx.translate(L/2, 0);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    const rFwd = 3 * CM_TO_PX;
+    const rRev = 1.5 * CM_TO_PX;
+    const sector = 30 * Math.PI / 180; // Divisão em 60 graus (30 para cada lado)
+
+    // Linhas que dividem as zonas de Frente, Ré e Laterais
+    [sector, -sector].forEach(angle => {
+        // Frente
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.lineTo(rFwd * Math.cos(angle), rFwd * Math.sin(angle));
+        ctx.stroke();
+        // Trás
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.lineTo(-rRev * Math.cos(angle), -rRev * Math.sin(angle));
+        ctx.stroke();
+    });
+    ctx.restore();
+
     const hH = carBodyH / 2;
     ctx.fillStyle = car.color; ctx.fillRect(-10, -hH, carBodyW, carBodyH);
     ctx.strokeStyle = '#333'; ctx.strokeRect(-10, -hH, carBodyW, carBodyH);
