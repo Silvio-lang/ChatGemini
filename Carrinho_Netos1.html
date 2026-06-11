@@ -196,8 +196,8 @@ function processControl() {
                 const steerHalfWidth = 15 * Math.PI / 180; // Total 30º
                 
                 if (absAngle > (steerCenter - steerHalfWidth) && absAngle < (steerCenter + steerHalfWidth)) {
-                    if (angleToClick < 0) car.alpha = -Math.PI / 4; // Esq (ângulo negativo no canvas)
-                    else car.alpha = Math.PI / 4; // Dir
+                    if (angleToClick < 0) car.alpha = -Math.PI / 6; // Esq (ângulo negativo no canvas)
+                    else car.alpha = Math.PI / 6; // Dir
                 }
                 // 3. ZONA MORTA (Entre os limites acima)
                 // Não faz nada: car.targetV continua 0 e car.alpha permanece o anterior.
