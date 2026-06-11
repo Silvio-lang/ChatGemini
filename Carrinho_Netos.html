@@ -238,9 +238,9 @@ function processControl() {
 
             // Controle de direção
             if (deg > 15 && deg < 165) {
-                targetAlpha = Math.PI / 4; // Esterçar para a direita
+                targetAlpha = Math.PI / 6; // Esterçar para a direita
             } else if (deg < -15 && deg > -165) {
-                targetAlpha = -Math.PI / 4; // Esterçar para a esquerda
+                targetAlpha = -Math.PI / 6; // Esterçar para a esquerda
             } else {
                 // Se estiver no cone frontal (-15 a 15) ou traseiro (atrás de 165), alinha as rodas
                 targetAlpha = 0;
