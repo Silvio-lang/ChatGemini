@@ -3,49 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Osciloscópio B3 - KLBN11</title>
+    <title>Osciloscópio B3 - KLBN11 v4.1</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="KLBNdados.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #000; color: #0f0; margin: 0; display: flex; flex-direction: column; min-height: 100vh; font-size: 13px; }
         header { background-color: #111; padding: 5px 15px; border-bottom: 1px solid #0f0; display: flex; justify-content: space-between; align-items: center; height: 30px; flex-shrink: 0; }
-        
         #main-container { display: flex; flex: 1; flex-direction: row; overflow: visible; }
         #chart-area { flex: 4; display: flex; flex-direction: column; min-width: 0; }
         #chart-container { flex: 1; background-color: #000; min-height: 250px; }
-        
-        /* Barra de Ação Rápida abaixo do Gráfico */
         #action-bar { background-color: #111; border-top: 1px solid #0f0; padding: 8px; display: flex; gap: 8px; justify-content: center; align-items: center; }
         .btn-action { flex: 1; padding: 12px 5px; font-weight: bold; border: 1px solid #0f0; background: transparent; color: #0f0; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
         .btn-buy { border-color: #0ff; color: #0ff; }
         .btn-sell { border-color: #fa0; color: #fa0; }
-        .btn-zero { border-color: #f00; color: #f00; font-size: 0.8em; }
-
-        #sidebar { flex: 1.2; background-color: #111; padding: 10px; border-left: 1px solid #0f0; display: flex; flex-direction: column; gap: 8px; min-width: 180px; }
-        .painel { border: 1px solid #0f0; padding: 6px; border-radius: 4px; background-color: #050505; }
-        .valor-display { font-size: 1.2em; font-weight: bold; color: #0f0; }
+        .btn-zero { border-color: #f00; color: #f00; }
+        #sidebar { flex: 1.5; background-color: #111; padding: 10px; border-left: 1px solid #0f0; display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .quadro { border: 1px solid #0f0; padding: 5px; border-radius: 4px; background-color: #050505; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .quadro-titulo { font-size: 0.6em; color: #0a0; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; }
+        .quadro-valor { font-size: 1.1em; font-weight: bold; font-family: 'Consolas', monospace; }
         .negativo { color: #f00 !important; }
-        
-        /* Lucro Aberto Compacto */
-        .lucro-compacto { display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; padding: 2px 0; }
-        .lucro-val { font-weight: bold; font-family: 'Consolas', monospace; }
-
-        #controles { padding: 10px; background-color: #111; border-top: 2px solid #0f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex-shrink: 0; }
+        .destaque-azul { color: #0ff !important; }
+        .destaque-laranja { color: #fa0 !important; }
+        .painel { border: 1px solid #0f0; padding: 8px; border-radius: 4px; background-color: #050505; }
         .label-info { font-size: 0.65em; color: #0a0; text-transform: uppercase; }
-        input { background: #000; color: #0f0; border: 1px solid #0f0; padding: 4px; font-family: 'Consolas', monospace; width: 100%; }
-        
-        @media (max-width: 800px) { 
-            #main-container { flex-direction: column; } 
-            #sidebar { border-left: none; border-top: 1px solid #0f0; width: auto; }
-        }
-        @media (max-height: 500px) { body { overflow-y: auto; } header { height: 25px; } }
+        input[type=number] { background: #000; color: #0f0; border: 1px solid #0f0; padding: 4px; font-family: 'Consolas', monospace; width: 100%; }
+        #controles { padding: 10px; background-color: #111; border-top: 2px solid #0f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex-shrink: 0; }
+        @media (max-width: 800px) { #main-container { flex-direction: column; } #sidebar { border-left: none; border-top: 1px solid #0f0; width: auto; } }
+        .auto-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.85em; }
+        .auto-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+        .auto-row input[type=number] { width: 60px; height: 22px; }
     </style>
 </head>
 <body>
 
 <header>
     <div style="font-weight: bold;">OSCILOSCÓPIO FINANCEIRO - KLBN11</div>
-    <div id="data-hora-display">OFFLINE</div>
+    <div id="data-hora-display">AGUARDANDO...</div>
 </header>
 
 <div id="main-container">
@@ -53,7 +47,6 @@
         <div id="chart-container">
             <div id="plotly-chart" style="width: 100%; height: 100%;"></div>
         </div>
-        <!-- BOTOES EM UMA LINHA SO ABAIXO DO GRAFICO -->
         <div id="action-bar">
             <button class="btn-action btn-buy" onclick="executarTrade('compra')">COMPRAR</button>
             <button class="btn-action btn-sell" onclick="executarTrade('venda')">VENDER</button>
@@ -62,49 +55,60 @@
     </div>
 
     <div id="sidebar">
+        <!-- LINHA 1 DA GRADE -->
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">DIVERGÊNCIA</div><div id="diff-display" class="quadro-valor">0.00%</div></div>
+            <div class="quadro"><div class="quadro-titulo">MULTIPLICADOR</div><div id="v-mult" class="quadro-valor destaque-laranja">1.0000</div></div>
+            <div class="quadro"><div class="quadro-titulo">CARTEIRA</div><div id="pos-qty-display" class="quadro-valor destaque-azul">0</div></div>
+        </div>
+
+        <!-- LINHA 2 DA GRADE -->
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">PREÇO MÉDIO</div><div id="avg-price-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">LUCRO ABERTO</div><div id="pnl-real-display" class="quadro-valor">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">ACUMULADO</div><div id="total-profit-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+        </div>
+
+        <!-- LINHA 3 DA GRADE: PERFORMANCE -->
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">FATOR LUCRO</div><div id="profit-factor-display" class="quadro-valor">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
+            <div class="quadro"><div class="quadro-titulo">WIN RATE</div><div id="win-rate-display" class="quadro-valor">0%</div></div>
+        </div>
+
+        <!-- PAINEL DE FECHAMENTO AUTOMÁTICO -->
         <div class="painel">
-            <div class="label-info">Divergência / Mult</div>
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <div id="diff-display" class="valor-display">0.00%</div>
-                <div id="v-mult" style="color: #fa0; font-size: 0.8em;">Mult: 1.0000</div>
+            <div class="label-info">FECHAMENTO AUTOMÁTICO</div>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-profit">
+                <span style="flex: 1;">Lucro >= R$</span>
+                <input type="number" id="val-auto-profit" value="500">
+            </div>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-diff-high">
+                <span style="flex: 1;">Div >= %</span>
+                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1">
+            </div>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-diff-low">
+                <span style="flex: 1;">Div <= %</span>
+                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1">
             </div>
         </div>
 
-        <div class="painel">
-            <div class="label-info">Carteira / Preço Médio</div>
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <div id="pos-qty-display" class="valor-display">0</div>
-                <div id="avg-price-display" style="color: #fff; font-size: 0.85em;">R$ 0,00</div>
-            </div>
-            <!-- LUCRO ABRETO COMPACTO DENTRO DO PAINEL DE CARTEIRA -->
-            <div class="lucro-compacto">
-                <span class="label-info" style="text-transform: none;">Lucro Aberto:</span>
-                <span id="pnl-real-display" class="lucro-val">R$ 0,00</span>
-            </div>
-        </div>
-
-        <div class="painel">
-            <div class="label-info">Lucro Acumulado</div>
-            <div id="total-profit-display" class="valor-display" style="color: #fff; font-size: 1.1em;">R$ 0,00</div>
-        </div>
-
-        <div class="painel">
-            <div class="label-info">Lote</div>
-            <input type="number" id="trade-qty" value="1000" step="100">
-            <div id="trade-status" style="font-size: 0.65em; color: #888; margin-top: 5px; text-align: center;">AGUARDANDO</div>
+        <div class="painel" style="display: flex; align-items: center; gap: 10px;">
+            <div style="flex: 1;"><div class="label-info">LOTE OPERACIONAL</div><input type="number" id="trade-qty" value="1000" step="100"></div>
+            <div id="trade-status" style="flex: 1; font-size: 0.6em; color: #888; text-align: center; border-left: 1px solid #333;">STANDBY</div>
         </div>
     </div>
 </div>
 
 <div id="controles">
     <button onclick="togglePlay()" id="btn-play" style="padding: 10px; background: transparent; border: 1px solid #0f0; color: #0f0; font-weight: bold; min-width: 80px;">INICIAR</button>
-    <div style="flex: 2;">
-        <div class="label-info">Navegação Horária</div>
-        <input type="range" id="hour-slider" min="0" value="0" oninput="mudarHora(this.value)">
-    </div>
+    <div style="flex: 2;"><div class="label-info">Navegação Horária</div><input type="range" id="hour-slider" min="0" value="0" oninput="mudarHora(this.value)"></div>
     <div style="flex: 1;">
         <div class="label-info">Velocidade</div>
-        <input type="range" id="speed-slider" min="10" max="1000" value="100" oninput="atualizarLabelVelocidade(this.value)">
+        <input type="range" id="speed-slider" min="1" max="100" value="10" oninput="atualizarLabelVelocidade(this.value)">
         <div id="speed-val" style="font-size: 0.6em; text-align: center;">Nível: 10</div>
     </div>
 </div>
@@ -114,13 +118,19 @@
     let blocosHoras = []; 
     let horaAtualIdx = 0, minutoNaHora = 0, lucroAcumulado = 0, playInterval = null;
     let posicaoTotal = 0, precoMedio = 0;
+    
+    // Variáveis de Fator de Lucro
+    let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
     const HORAS_NA_TELA = 24;
 
+    function calcularDelay(nivel) {
+        const d = Math.round(1000 * Math.pow(0.954, nivel - 1) + 5);
+        return Math.max(10, d);
+    }
+
     function atualizarLabelVelocidade(v) {
-        // v é o valor do slider (10 a 1000). 
-        // Maior v deve ser Mais Rápido.
-        const nivel = Math.round(v / 10);
-        document.getElementById('speed-val').innerText = "Nível: " + nivel;
+        document.getElementById('speed-val').innerText = "Nível: " + v;
+        if (playInterval) { pararMotor(); iniciarMotor(); }
     }
 
     function prepararDados() {
@@ -130,12 +140,9 @@
         dadosTratados = [];
         let diaAtual = null, multDesteDia = 1, ultimaHoraCheia = null;
         for (let i = 0; i < klbnRaw.length; i++) {
-            const dataHora = klbnRaw[i][0];
-            const precoKLBN = klbnRaw[i][1];
-            const precoSUZB = mapSuzb.get(dataHora);
+            const dataHora = klbnRaw[i][0], precoKLBN = klbnRaw[i][1], precoSUZB = mapSuzb.get(dataHora);
             if (precoSUZB === undefined) continue;
-            const dataPura = dataHora.split(' ')[0];
-            const horaCheia = dataHora.split(' ')[1].split(':')[0];
+            const dataPura = dataHora.split(' ')[0], horaCheia = dataHora.split(' ')[1].split(':')[0];
             if (dataPura !== diaAtual) {
                 if (dadosTratados.length > 0) {
                     const ultimo = dadosTratados[dadosTratados.length - 1];
@@ -152,38 +159,35 @@
     }
 
     function togglePlay() {
-        if (playInterval) { clearInterval(playInterval); playInterval = null; document.getElementById('btn-play').innerText = "INICIAR"; }
-        else {
-            document.getElementById('btn-play').innerText = "PARAR";
-            const motor = () => {
-                minutoNaHora++;
-                let prox = (horaAtualIdx + 1 < blocosHoras.length) ? blocosHoras[horaAtualIdx + 1] : dadosTratados.length;
-                if ((blocosHoras[horaAtualIdx] + minutoNaHora) >= prox) { minutoNaHora = 0; horaAtualIdx++; if (horaAtualIdx >= blocosHoras.length) { togglePlay(); return; } }
-                atualizarGrafico();
-                if (playInterval) {
-                    clearInterval(playInterval);
-                    const v = parseInt(document.getElementById('speed-slider').value);
-                    const delay = 1010 - v; // Inversão para que MAIOR v = MENOR delay
-                    playInterval = setInterval(motor, delay);
-                }
-            };
-            const vInicial = parseInt(document.getElementById('speed-slider').value);
-            playInterval = setInterval(motor, 1010 - vInicial);
-        }
+        if (playInterval) { pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; }
+        else { document.getElementById('btn-play').innerText = "PARAR"; iniciarMotor(); }
     }
 
-    function mudarHora(h) { if (playInterval) togglePlay(); horaAtualIdx = parseInt(h); minutoNaHora = 0; atualizarGrafico(); }
+    function iniciarMotor() {
+        const motor = () => {
+            minutoNaHora++;
+            let prox = (horaAtualIdx + 1 < blocosHoras.length) ? blocosHoras[horaAtualIdx + 1] : dadosTratados.length;
+            if ((blocosHoras[horaAtualIdx] + minutoNaHora) >= prox) {
+                minutoNaHora = 0; horaAtualIdx++;
+                if (horaAtualIdx >= blocosHoras.length) { pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; return; }
+            }
+            atualizarGrafico();
+        };
+        playInterval = setInterval(motor, calcularDelay(parseInt(document.getElementById('speed-slider').value)));
+    }
+
+    function pararMotor() { if (playInterval) clearInterval(playInterval); playInterval = null; }
+    function mudarHora(h) { pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; horaAtualIdx = parseInt(h); minutoNaHora = 0; atualizarGrafico(); }
 
     function atualizarGrafico() {
         if (dadosTratados.length === 0) return;
         const inicio = Math.max(0, horaAtualIdx - HORAS_NA_TELA + 1);
         let xArr = [], yK = [], yS = [], tArr = [];
         for (let h = inicio; h <= horaAtualIdx; h++) {
-            const idxInicio = blocosHoras[h];
-            const idxNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1] : dadosTratados.length;
-            const idxFinal = idxInicio + (h === horaAtualIdx ? minutoNaHora : (idxNext - idxInicio - 1));
-            if (idxFinal >= dadosTratados.length) continue;
-            xArr.push(h); yK.push(dadosTratados[idxFinal].klbn); yS.push(dadosTratados[idxFinal].suzb_adj); tArr.push(dadosTratados[idxFinal].time);
+            const idxInicio = blocosHoras[h], iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1] : dadosTratados.length;
+            const iFin = idxInicio + (h === horaAtualIdx ? minutoNaHora : (iNext - idxInicio - 1));
+            if (iFin >= dadosTratados.length) continue;
+            xArr.push(h); yK.push(dadosTratados[iFin].klbn); yS.push(dadosTratados[iFin].suzb_adj); tArr.push(dadosTratados[iFin].time);
         }
         Plotly.react('plotly-chart', [
             { x: xArr, y: yK, mode: 'lines+markers', name: 'KLBN11', line: {color: '#0ff', width: 3}, marker: {size: 5} },
@@ -194,28 +198,57 @@
             xaxis: { color: '#0f0', gridcolor: '#030', range: [inicio, inicio + HORAS_NA_TELA], tickmode: 'array', tickvals: xArr, ticktext: tArr.map(l => l.split(' ')[1].substring(0,5)) },
             yaxis: { color: '#0f0', gridcolor: '#030', autorange: true }
         });
+
         const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora];
         document.getElementById('data-hora-display').innerText = atual.time;
+        
+        // --- DISPLAYS ---
         document.getElementById('diff-display').innerText = atual.diff.toFixed(2) + '%';
-        document.getElementById('v-mult').innerText = "M: " + atual.mult.toFixed(4);
+        document.getElementById('diff-display').className = 'quadro-valor ' + (atual.diff < 0 ? 'negativo' : '');
+        document.getElementById('v-mult').innerText = atual.mult.toFixed(4);
         document.getElementById('pos-qty-display').innerText = posicaoTotal;
-        document.getElementById('pos-qty-display').style.color = posicaoTotal > 0 ? '#0ff' : (posicaoTotal < 0 ? '#fa0' : '#0f0');
-        document.getElementById('avg-price-display').innerText = 'PM: R$' + precoMedio.toFixed(2);
+        document.getElementById('pos-qty-display').className = 'quadro-valor ' + (posicaoTotal < 0 ? 'negativo' : 'destaque-azul');
+        document.getElementById('avg-price-display').innerText = precoMedio.toFixed(2);
+
         let lucroAberto = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (posicaoTotal < 0 ? (precoMedio - atual.klbn) * Math.abs(posicaoTotal) : 0);
-        document.getElementById('pnl-real-display').innerText = 'R$ ' + lucroAberto.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-        document.getElementById('pnl-real-display').className = 'lucro-val ' + (lucroAberto < 0 ? 'negativo' : '');
-        document.getElementById('total-profit-display').innerText = 'R$ ' + lucroAcumulado.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        const openProfitEl = document.getElementById('pnl-real-display');
+        openProfitEl.innerText = lucroAberto.toFixed(2);
+        openProfitEl.className = 'quadro-valor ' + (lucroAberto < 0 ? 'negativo' : '');
+
+        const totalProfitEl = document.getElementById('total-profit-display');
+        totalProfitEl.innerText = lucroAcumulado.toFixed(2);
+        totalProfitEl.className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
+
+        // --- PERFORMANCE ---
+        const pf = perdasBrutas === 0 ? ganhosBrutos : (ganhosBrutos / perdasBrutas);
+        document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
+        document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
+        document.getElementById('trade-count-display').innerText = totalTrades;
+        const wr = totalTrades === 0 ? 0 : (tradesVencedores / totalTrades * 100);
+        document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
+        document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
+
+        // --- AUTO-CLOSE ---
+        if (posicaoTotal !== 0) {
+            const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
+            const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
+            const chkDiffLow = document.getElementById('chk-auto-diff-low').checked, valDiffLow = parseFloat(document.getElementById('val-auto-diff-low').value);
+            let trigger = false, mot = "";
+            if (chkProfit && lucroAberto >= valProfit) { trigger = true; mot = "ALVO R$"; }
+            else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "DIV ALTA"; }
+            else if (chkDiffLow && atual.diff <= valDiffLow) { trigger = true; mot = "DIV BAIXA"; }
+            if (trigger) { zerarTudo(); document.getElementById('trade-status').innerText = "AUTO: " + mot; }
+        }
     }
 
     function executarTrade(tipo) {
-        const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora];
-        const qty = parseInt(document.getElementById('trade-qty').value);
-        const precoAtual = atual.klbn;
+        const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora], qty = parseInt(document.getElementById('trade-qty').value), precoAtual = atual.klbn;
         if (tipo === 'compra') {
             if (posicaoTotal >= 0) { precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); posicaoTotal += qty; }
             else {
                 const qtyReduzir = Math.min(qty, Math.abs(posicaoTotal));
-                lucroAcumulado += (precoMedio - precoAtual) * qtyReduzir;
+                const res = (precoMedio - precoAtual) * qtyReduzir;
+                apurarResultado(res);
                 posicaoTotal += qtyReduzir;
                 if (qty > qtyReduzir) { posicaoTotal = (qty - qtyReduzir); precoMedio = precoAtual; } else if (posicaoTotal === 0) precoMedio = 0;
             }
@@ -223,7 +256,8 @@
             if (posicaoTotal <= 0) { precoMedio = ((Math.abs(posicaoTotal) * precoMedio) + (qty * precoAtual)) / (Math.abs(posicaoTotal) + qty); posicaoTotal -= qty; }
             else {
                 const qtyReduzir = Math.min(qty, posicaoTotal);
-                lucroAcumulado += (precoAtual - precoMedio) * qtyReduzir;
+                const res = (precoAtual - precoMedio) * qtyReduzir;
+                apurarResultado(res);
                 posicaoTotal -= qtyReduzir;
                 if (qty > qtyReduzir) { posicaoTotal = -(qty - qtyReduzir); precoMedio = precoAtual; } else if (posicaoTotal === 0) precoMedio = 0;
             }
@@ -232,11 +266,19 @@
         atualizarGrafico();
     }
 
+    function apurarResultado(val) {
+        lucroAcumulado += val; totalTrades++;
+        if (val > 0) { ganhosBrutos += val; tradesVencedores++; } else { perdasBrutas += Math.abs(val); }
+    }
+
     function zerarTudo() {
         const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora];
-        if (posicaoTotal !== 0) { lucroAcumulado += (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal); }
-        posicaoTotal = 0; precoMedio = 0; document.getElementById('trade-status').innerText = "ZERADO";
-        atualizarGrafico();
+        if (posicaoTotal !== 0) {
+            let resFinal = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal);
+            apurarResultado(resFinal);
+            document.getElementById('trade-status').innerText = "ZERADO";
+        }
+        posicaoTotal = 0; precoMedio = 0; atualizarGrafico();
     }
     window.onload = prepararDados;
 </script>
