@@ -3,36 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Osciloscópio B3 - KLBN11 v4.1</title>
+    <title>Osciloscópio B3 - KLBN11 v4.3</title>
+    <!-- BIBLIOTECAS EXTERNAS: Plotly para gráficos de alta performance -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <!-- DADOS: Gerado pelo script Python, contém as séries históricas processadas -->
     <script src="KLBNdados.js"></script>
     <style>
+        /* ARQUITETURA DE DESIGN: Dark Mode estilo Terminal para traders */
         body { font-family: 'Segoe UI', sans-serif; background-color: #000; color: #0f0; margin: 0; display: flex; flex-direction: column; min-height: 100vh; font-size: 13px; }
         header { background-color: #111; padding: 5px 15px; border-bottom: 1px solid #0f0; display: flex; justify-content: space-between; align-items: center; height: 30px; flex-shrink: 0; }
+        
         #main-container { display: flex; flex: 1; flex-direction: row; overflow: visible; }
         #chart-area { flex: 4; display: flex; flex-direction: column; min-width: 0; }
         #chart-container { flex: 1; background-color: #000; min-height: 250px; }
+        
+        /* BARRA DE AÇÃO: Posicionada para fácil acesso mobile (polegar) */
         #action-bar { background-color: #111; border-top: 1px solid #0f0; padding: 8px; display: flex; gap: 8px; justify-content: center; align-items: center; }
         .btn-action { flex: 1; padding: 12px 5px; font-weight: bold; border: 1px solid #0f0; background: transparent; color: #0f0; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
         .btn-buy { border-color: #0ff; color: #0ff; }
         .btn-sell { border-color: #fa0; color: #fa0; }
         .btn-zero { border-color: #f00; color: #f00; }
-        #sidebar { flex: 1.5; background-color: #111; padding: 10px; border-left: 1px solid #0f0; display: flex; flex-direction: column; gap: 10px; min-width: 250px; }
+
+        #sidebar { flex: 1.5; background-color: #111; padding: 10px; border-left: 1px solid #0f0; display: flex; flex-direction: column; gap: 8px; min-width: 260px; overflow-y: auto; }
+        
+        /* LAYOUT DE GRADE (GRID): Otimiza espaço vertical e visibilidade de métricas */
         .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
         .quadro { border: 1px solid #0f0; padding: 5px; border-radius: 4px; background-color: #050505; text-align: center; display: flex; flex-direction: column; justify-content: center; }
-        .quadro-titulo { font-size: 0.6em; color: #0a0; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; }
+        .quadro-titulo { font-size: 0.55em; color: #0a0; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; line-height: 1.1; }
         .quadro-valor { font-size: 1.1em; font-weight: bold; font-family: 'Consolas', monospace; }
+        
         .negativo { color: #f00 !important; }
         .destaque-azul { color: #0ff !important; }
         .destaque-laranja { color: #fa0 !important; }
         .painel { border: 1px solid #0f0; padding: 8px; border-radius: 4px; background-color: #050505; }
         .label-info { font-size: 0.65em; color: #0a0; text-transform: uppercase; }
-        input[type=number] { background: #000; color: #0f0; border: 1px solid #0f0; padding: 4px; font-family: 'Consolas', monospace; width: 100%; }
+        
         #controles { padding: 10px; background-color: #111; border-top: 2px solid #0f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex-shrink: 0; }
+        input[type=number] { background: #000; color: #0f0; border: 1px solid #0f0; padding: 4px; font-family: 'Consolas', monospace; width: 100%; }
+        
         @media (max-width: 800px) { #main-container { flex-direction: column; } #sidebar { border-left: none; border-top: 1px solid #0f0; width: auto; } }
-        .auto-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.85em; }
-        .auto-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
-        .auto-row input[type=number] { width: 60px; height: 22px; }
+        .auto-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.8em; }
+        .auto-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+        .auto-row input[type=number] { width: 50px; height: 20px; text-align: right; padding-right: 2px; }
     </style>
 </head>
 <body>
@@ -55,28 +67,32 @@
     </div>
 
     <div id="sidebar">
-        <!-- LINHA 1 DA GRADE -->
+        <!-- MÉTRICAS DE MERCADO -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">DIVERGÊNCIA</div><div id="diff-display" class="quadro-valor">0.00%</div></div>
             <div class="quadro"><div class="quadro-titulo">MULTIPLICADOR</div><div id="v-mult" class="quadro-valor destaque-laranja">1.0000</div></div>
-            <div class="quadro"><div class="quadro-titulo">CARTEIRA</div><div id="pos-qty-display" class="quadro-valor destaque-azul">0</div></div>
+            <div class="quadro"><div class="quadro-titulo">DIAS DECORRIDOS</div><div id="days-count-display" class="quadro-valor" style="color: #fff;">0</div></div>
         </div>
-
-        <!-- LINHA 2 DA GRADE -->
+        <!-- MÉTRICAS DE CARTEIRA -->
         <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">AÇÕES EM CARTEIRA</div><div id="pos-qty-display" class="quadro-valor destaque-azul">0</div></div>
             <div class="quadro"><div class="quadro-titulo">PREÇO MÉDIO</div><div id="avg-price-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">LUCRO ABERTO</div><div id="pnl-real-display" class="quadro-valor">0.00</div></div>
-            <div class="quadro"><div class="quadro-titulo">ACUMULADO</div><div id="total-profit-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
         </div>
-
-        <!-- LINHA 3 DA GRADE: PERFORMANCE -->
+        <!-- MÉTRICAS DE PERFORMANCE -->
         <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">LUCRO ACUMULADO</div><div id="total-profit-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">FATOR LUCRO</div><div id="profit-factor-display" class="quadro-valor">0.00</div></div>
-            <div class="quadro"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
             <div class="quadro"><div class="quadro-titulo">WIN RATE</div><div id="win-rate-display" class="quadro-valor">0%</div></div>
         </div>
 
-        <!-- PAINEL DE FECHAMENTO AUTOMÁTICO -->
+        <!-- MÉTRICAS EXTRAS -->
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">LUCRO AÇÃO (1 LT)</div><div id="lucro-acao-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro" style="display: none;"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
+        </div>
+
+        <!-- AUTOMAÇÃO: Take Profit e Stop por Divergência ou Lucro Financeiro -->
         <div class="painel">
             <div class="label-info">FECHAMENTO AUTOMÁTICO</div>
             <div class="auto-row">
@@ -86,13 +102,13 @@
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-high">
-                <span style="flex: 1;">Div >= %</span>
-                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1">
+                <span style="flex: 1;">PREÇO > 2°ATIVO</span>
+                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1"> <span>%</span>
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-low">
-                <span style="flex: 1;">Div <= %</span>
-                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1">
+                <span style="flex: 1;">PREÇO < 2°ATIVO</span>
+                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1"> <span>%</span>
             </div>
         </div>
 
@@ -114,18 +130,32 @@
 </div>
 
 <script>
-    let dadosTratados = [];
-    let blocosHoras = []; 
-    let horaAtualIdx = 0, minutoNaHora = 0, lucroAcumulado = 0, playInterval = null;
-    let posicaoTotal = 0, precoMedio = 0;
-    
-    // Variáveis de Fator de Lucro
-    let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
-    const HORAS_NA_TELA = 24;
+    /**
+     * MOTOR DO SIMULADOR E LÓGICA FINANCEIRA
+     * Estratégia: Arbitragem estatística (Pair Trade) entre KLBN11 e SUZB3.
+     * Normalização: O multiplicador é resetado no fechamento de cada dia para capturar o Gap de abertura.
+     */
 
+    // ESTADO GLOBAL
+    let dadosTratados = []; // Array de objetos {time, dataPura, klbn, suzb_real, suzb_adj, diff, mult}
+    let blocosHoras = [];   // Índices globais onde começam as horas cheias (HH:00)
+    let horaAtualIdx = 0;   // Índice do bloco de hora selecionado no slider
+    let minutoNaHora = 0;   // Offset (0-59) dentro da hora atual
+    let lucroAcumulado = 0;
+    let playInterval = null;
+    let indiceSegundoDia = 0;
+    
+    // LOGICA DE CARTEIRA (PROFISSIONAL)
+    let posicaoTotal = 0;   // Quantidade atual: Positiva = Comprado, Negativa = Vendido
+    let precoMedio = 0;     // Preço médio ponderado de aquisição ou venda
+    let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
+    
+    const HORAS_NA_TELA = 24; // Janela visual fixa (aprox. 3 pregões B3)
+
+    // FUNÇÕES DE MOTOR
     function calcularDelay(nivel) {
-        const d = Math.round(1000 * Math.pow(0.954, nivel - 1) + 5);
-        return Math.max(10, d);
+        // Escala logarítmica para aceleração suave (1000ms a 10ms)
+        return Math.max(10, Math.round(1000 * Math.pow(0.954, nivel - 1) + 5));
     }
 
     function atualizarLabelVelocidade(v) {
@@ -133,27 +163,55 @@
         if (playInterval) { pararMotor(); iniciarMotor(); }
     }
 
+    /**
+     * PREPARAÇÃO DOS DADOS: Converte o JSON bruto para séries normalizadas.
+     * Importante: Pula o primeiro dia para garantir disponibilidade de 'fechamento anterior'.
+     */
     function prepararDados() {
         const klbnRaw = DADOS_HISTORICOS.klbn;
         const suzbRaw = DADOS_HISTORICOS.suzb;
         const mapSuzb = new Map(suzbRaw.map(i => [i[0], i[1]]));
+        
         dadosTratados = [];
+        blocosHoras = [];
         let diaAtual = null, multDesteDia = 1, ultimaHoraCheia = null;
+        // indiceSegundoDia agora é global
+
         for (let i = 0; i < klbnRaw.length; i++) {
             const dataHora = klbnRaw[i][0], precoKLBN = klbnRaw[i][1], precoSUZB = mapSuzb.get(dataHora);
             if (precoSUZB === undefined) continue;
-            const dataPura = dataHora.split(' ')[0], horaCheia = dataHora.split(' ')[1].split(':')[0];
+
+            const [dataPura, horaFull] = dataHora.split(' ');
+            const horaCheia = horaFull.split(':')[0];
+
+            // DETECÇÃO DE TROCA DE DIA: Recalcula multiplicador baseado no fechamento do dia anterior
             if (dataPura !== diaAtual) {
                 if (dadosTratados.length > 0) {
                     const ultimo = dadosTratados[dadosTratados.length - 1];
                     multDesteDia = ultimo.klbn / ultimo.suzb_real;
+                    if (indiceSegundoDia === 0) indiceSegundoDia = blocosHoras.length; 
                 } else { multDesteDia = precoKLBN / precoSUZB; }
                 diaAtual = dataPura;
             }
-            if (horaCheia !== ultimaHoraCheia) { blocosHoras.push(dadosTratados.length); ultimaHoraCheia = horaCheia; }
-            dadosTratados.push({ time: dataHora, klbn: precoKLBN, suzb_real: precoSUZB, suzb_adj: precoSUZB * multDesteDia, diff: ((precoKLBN / (precoSUZB * multDesteDia)) - 1) * 100, mult: multDesteDia });
+
+            // DETECÇÃO DE HORA CHEIA: Para navegação exata no slider (Osciloscópio)
+            if (horaCheia !== ultimaHoraCheia) {
+                blocosHoras.push({ globalIdx: dadosTratados.length, data: dataPura });
+                ultimaHoraCheia = horaCheia;
+            }
+
+            dadosTratados.push({ 
+                time: dataHora, dataPura: dataPura, klbn: precoKLBN, 
+                suzb_real: precoSUZB, suzb_adj: precoSUZB * multDesteDia, 
+                diff: ((precoKLBN / (precoSUZB * multDesteDia)) - 1) * 100, 
+                mult: multDesteDia 
+            });
         }
+
+        // INICIALIZAÇÃO: Começa no segundo dia de dados reais
+        horaAtualIdx = Math.min(indiceSegundoDia, blocosHoras.length - 1); 
         document.getElementById('hour-slider').max = blocosHoras.length - 1;
+        document.getElementById('hour-slider').value = horaAtualIdx;
         atualizarLabelVelocidade(document.getElementById('speed-slider').value);
         atualizarGrafico();
     }
@@ -166,10 +224,11 @@
     function iniciarMotor() {
         const motor = () => {
             minutoNaHora++;
-            let prox = (horaAtualIdx + 1 < blocosHoras.length) ? blocosHoras[horaAtualIdx + 1] : dadosTratados.length;
-            if ((blocosHoras[horaAtualIdx] + minutoNaHora) >= prox) {
+            let proxIdx = (horaAtualIdx + 1 < blocosHoras.length) ? blocosHoras[horaAtualIdx + 1].globalIdx : dadosTratados.length;
+            if ((blocosHoras[horaAtualIdx].globalIdx + minutoNaHora) >= proxIdx) {
                 minutoNaHora = 0; horaAtualIdx++;
                 if (horaAtualIdx >= blocosHoras.length) { pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; return; }
+                document.getElementById('hour-slider').value = horaAtualIdx;
             }
             atualizarGrafico();
         };
@@ -179,47 +238,72 @@
     function pararMotor() { if (playInterval) clearInterval(playInterval); playInterval = null; }
     function mudarHora(h) { pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; horaAtualIdx = parseInt(h); minutoNaHora = 0; atualizarGrafico(); }
 
+    /**
+     * RENDERIZAÇÃO GRÁFICA: Plotly React para movimento fluido.
+     * Eixo X: Blocos de hora cheia. Eixo Y: Preços ajustados.
+     */
     function atualizarGrafico() {
         if (dadosTratados.length === 0) return;
-        const inicio = Math.max(0, horaAtualIdx - HORAS_NA_TELA + 1);
+        const inicio = Math.max(0, horaAtualIdx - HORAS_NA_TELA + 1, indiceSegundoDia - 1);
         let xArr = [], yK = [], yS = [], tArr = [];
+        let divisoresDia = [];
+
         for (let h = inicio; h <= horaAtualIdx; h++) {
-            const idxInicio = blocosHoras[h], iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1] : dadosTratados.length;
-            const iFin = idxInicio + (h === horaAtualIdx ? minutoNaHora : (iNext - idxInicio - 1));
+            const iStart = blocosHoras[h].globalIdx, iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1].globalIdx : dadosTratados.length;
+            const iFin = iStart + (h === horaAtualIdx ? minutoNaHora : (iNext - iStart - 1));
             if (iFin >= dadosTratados.length) continue;
             xArr.push(h); yK.push(dadosTratados[iFin].klbn); yS.push(dadosTratados[iFin].suzb_adj); tArr.push(dadosTratados[iFin].time);
+
+            // DETECTAR TROCA DE DIA PARA DIVISOR VISUAL
+            if (h < horaAtualIdx && h + 1 < blocosHoras.length) {
+                if (blocosHoras[h].data !== blocosHoras[h+1].data) {
+                    divisoresDia.push({
+                        type: 'line', xref: 'x', yref: 'paper',
+                        x0: h + 0.2, x1: h + 0.2, y0: 0, y1: 1,
+                        line: { color: '#444', width: 2, dash: 'dashdot' }
+                    });
+                }
+            }
         }
+
         Plotly.react('plotly-chart', [
             { x: xArr, y: yK, mode: 'lines+markers', name: 'KLBN11', line: {color: '#0ff', width: 3}, marker: {size: 5} },
-            { x: xArr, y: yS, mode: 'lines+markers', name: 'SUZB3', line: {color: '#fa0', width: 1}, marker: {size: 3} }
+            { x: xArr, y: yS, mode: 'lines+markers', name: 'SUZB3 (Adj)', line: {color: '#fa0', width: 1.5}, marker: {size: 3} }
         ], {
             paper_bgcolor: '#000', plot_bgcolor: '#000', margin: { t: 30, r: 10, b: 30, l: 40 },
             showlegend: true, legend: { font: { color: '#0f0', size: 10 }, orientation: 'h', y: 1.15 },
             xaxis: { color: '#0f0', gridcolor: '#030', range: [inicio, inicio + HORAS_NA_TELA], tickmode: 'array', tickvals: xArr, ticktext: tArr.map(l => l.split(' ')[1].substring(0,5)) },
-            yaxis: { color: '#0f0', gridcolor: '#030', autorange: true }
+            yaxis: { color: '#0f0', gridcolor: '#030', autorange: true },
+            shapes: divisoresDia
         });
 
-        const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora];
+        // ATUALIZAÇÃO DA INTERFACE (UI)
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         document.getElementById('data-hora-display').innerText = atual.time;
         
-        // --- DISPLAYS ---
+        // CÁLCULO DE DIAS DECORRIDOS
+        const dias = Math.floor((new Date(atual.dataPura) - new Date(dadosTratados[0].dataPura)) / 86400000) + 1;
+        document.getElementById('days-count-display').innerText = dias;
+
+        // VISUALIZAÇÃO DE DIVERGÊNCIA E MULTIPLICADOR
         document.getElementById('diff-display').innerText = atual.diff.toFixed(2) + '%';
         document.getElementById('diff-display').className = 'quadro-valor ' + (atual.diff < 0 ? 'negativo' : '');
         document.getElementById('v-mult').innerText = atual.mult.toFixed(4);
+        
+        // CARTEIRA E PREÇO MÉDIO
         document.getElementById('pos-qty-display').innerText = posicaoTotal;
         document.getElementById('pos-qty-display').className = 'quadro-valor ' + (posicaoTotal < 0 ? 'negativo' : 'destaque-azul');
         document.getElementById('avg-price-display').innerText = precoMedio.toFixed(2);
 
+        // LUCRO ABERTO (MARK-TO-MARKET)
         let lucroAberto = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (posicaoTotal < 0 ? (precoMedio - atual.klbn) * Math.abs(posicaoTotal) : 0);
         const openProfitEl = document.getElementById('pnl-real-display');
         openProfitEl.innerText = lucroAberto.toFixed(2);
         openProfitEl.className = 'quadro-valor ' + (lucroAberto < 0 ? 'negativo' : '');
 
-        const totalProfitEl = document.getElementById('total-profit-display');
-        totalProfitEl.innerText = lucroAcumulado.toFixed(2);
-        totalProfitEl.className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
-
-        // --- PERFORMANCE ---
+        // LUCRO ACUMULADO E PERFORMANCE
+        document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
+        document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
         const pf = perdasBrutas === 0 ? ganhosBrutos : (ganhosBrutos / perdasBrutas);
         document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
         document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
@@ -228,7 +312,14 @@
         document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
         document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
 
-        // --- AUTO-CLOSE ---
+        // LUCRO AÇÃO (BUY & HOLD 1 LOTE)
+        const precoInicial = dadosTratados[0].klbn;
+        const lucroAcao = (atual.klbn - precoInicial) * 1000;
+        const lucroAcaoEl = document.getElementById('lucro-acao-display');
+        lucroAcaoEl.innerText = lucroAcao.toFixed(2);
+        lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
+
+        // LÓGICA DE AUTO-FECHAMENTO (Take Profit / Stop)
         if (posicaoTotal !== 0) {
             const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
             const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
@@ -241,8 +332,12 @@
         }
     }
 
+    /**
+     * EXECUÇÃO DE TRADE: Lógica de empilhamento de lotes e preço médio ponderado.
+     * Trata redução de posição e vira-mão automaticamente.
+     */
     function executarTrade(tipo) {
-        const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora], qty = parseInt(document.getElementById('trade-qty').value), precoAtual = atual.klbn;
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora], qty = parseInt(document.getElementById('trade-qty').value), precoAtual = atual.klbn;
         if (tipo === 'compra') {
             if (posicaoTotal >= 0) { precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); posicaoTotal += qty; }
             else {
@@ -272,7 +367,7 @@
     }
 
     function zerarTudo() {
-        const atual = dadosTratados[blocosHoras[horaAtualIdx] + minutoNaHora];
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         if (posicaoTotal !== 0) {
             let resFinal = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal);
             apurarResultado(resFinal);
@@ -280,6 +375,7 @@
         }
         posicaoTotal = 0; precoMedio = 0; atualizarGrafico();
     }
+    
     window.onload = prepararDados;
 </script>
 </body>
