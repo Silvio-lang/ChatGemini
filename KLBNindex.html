@@ -150,7 +150,7 @@
     let precoMedio = 0;     // Preço médio ponderado de aquisição ou venda
     let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
     
-    const HORAS_NA_TELA = 24; // Janela visual fixa (aprox. 3 pregões B3)
+    const HORAS_NA_TELA = 48; // Janela visual fixa (aprox. 6 pregões B3)
 
     // FUNÇÕES DE MOTOR
     function calcularDelay(nivel) {
@@ -279,7 +279,11 @@
 
         // ATUALIZAÇÃO DA INTERFACE (UI)
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
-        document.getElementById('data-hora-display').innerText = atual.time;
+        
+        // FORMATAR DATA/HORA PARA O PADRÃO BRASILEIRO (DD/MM/AAAA hh:mm)
+        const [dataPura, horaFull] = atual.time.split(' ');
+        const [ano, mes, dia] = dataPura.split('-');
+        document.getElementById('data-hora-display').innerText = `${dia}/${mes}/${ano} ${horaFull.substring(0, 5)}`;
         
         // CÁLCULO DE DIAS DECORRIDOS
         const dias = Math.floor((new Date(atual.dataPura) - new Date(dadosTratados[0].dataPura)) / 86400000) + 1;
