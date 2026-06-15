@@ -89,6 +89,7 @@
         <!-- MÉTRICAS EXTRAS -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">LUCRO AÇÃO (1 LT)</div><div id="lucro-acao-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">AÇÕES EQV.CAP.</div><div id="eqv-cap-display" class="quadro-valor destaque-azul">0</div></div>
             <div class="quadro" style="display: none;"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
         </div>
 
@@ -109,6 +110,30 @@
                 <input type="checkbox" id="chk-auto-diff-low">
                 <span style="flex: 1;">PREÇO < 2°ATIVO</span>
                 <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1"> <span>%</span>
+            </div>
+        </div>
+
+        <!-- COMPRA AUTOMÁTICA (Indicadores Silvio) -->
+        <div class="painel">
+            <div class="label-info">COMPRA AUTOMÁTICA</div>
+            <div class="auto-row" title="Queda máxima de KLBN11 nos últimos 4 dias">
+                <span style="flex: 2; font-size: 0.85em;">QUEDA 4D > %</span>
+                <input type="number" id="buy-auto-fall" value="3.0" step="0.1">
+                <input type="checkbox" id="buy-req-fall" checked> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row">
+                <span style="flex: 2; font-size: 0.85em;">DIVERG. < %</span>
+                <input type="number" id="buy-auto-diff" value="-1.5" step="0.1">
+                <input type="checkbox" id="buy-req-diff" checked> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row">
+                <span style="flex: 2; font-size: 0.85em;">SUZB 1H > %</span>
+                <input type="number" id="buy-auto-suzb" value="0.5" step="0.1">
+                <input type="checkbox" id="buy-req-suzb" checked> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row" style="margin-top: 8px; border-top: 1px solid #222; padding-top: 5px;">
+                <input type="checkbox" id="buy-authorized">
+                <span style="flex: 1; color: #0ff; font-weight: bold;">AUTORIZAR COMPRA</span>
             </div>
         </div>
 
@@ -144,6 +169,8 @@
     let lucroAcumulado = 0;
     let playInterval = null;
     let indiceSegundoDia = 0;
+    let saldoFinanceiro = 0;
+    let primeiroTrade = true;
     
     // LOGICA DE CARTEIRA (PROFISSIONAL)
     let posicaoTotal = 0;   // Quantidade atual: Positiva = Comprado, Negativa = Vendido
@@ -174,6 +201,8 @@
         
         dadosTratados = [];
         blocosHoras = [];
+        saldoFinanceiro = 0;
+        primeiroTrade = true;
         let diaAtual = null, multDesteDia = 1, ultimaHoraCheia = null;
         // indiceSegundoDia agora é global
 
@@ -323,6 +352,51 @@
         lucroAcaoEl.innerText = lucroAcao.toFixed(2);
         lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
 
+        // AÇÕES EQV.CAP. (Indicador Silvio)
+        const eqvCap = posicaoTotal + (saldoFinanceiro / atual.klbn);
+        document.getElementById('eqv-cap-display').innerText = Math.round(eqvCap);
+
+        // LÓGICA DE COMPRA AUTOMÁTICA (Indicadores Silvio)
+        if (playInterval) {
+            let condFall = true, condDiff = true, condSuzb = true;
+            
+            // 1. QUEDA MÁXIMA 4 DIAS (Estimado em 28 horas de pregão)
+            if (document.getElementById('buy-req-fall').checked) {
+                const lookback = 28; 
+                let maxH = atual.klbn;
+                for (let i = 1; i <= lookback; i++) {
+                    const hIdx = horaAtualIdx - i;
+                    if (hIdx < 0) break;
+                    const hist = dadosTratados[blocosHoras[hIdx].globalIdx];
+                    if (hist.klbn > maxH) maxH = hist.klbn;
+                }
+                const queda = ((maxH - atual.klbn) / maxH) * 100;
+                condFall = queda >= parseFloat(document.getElementById('buy-auto-fall').value);
+            }
+
+            // 2. DIVERGÊNCIA
+            if (document.getElementById('buy-req-diff').checked) {
+                condDiff = atual.diff <= parseFloat(document.getElementById('buy-auto-diff').value);
+            }
+
+            // 3. SUBIDA SUZB 1H
+            if (document.getElementById('buy-req-suzb').checked) {
+                if (horaAtualIdx > 0) {
+                    const suzbPrev = dadosTratados[blocosHoras[horaAtualIdx-1].globalIdx].suzb_real;
+                    const subida = ((atual.suzb_real - suzbPrev) / suzbPrev) * 100;
+                    condSuzb = subida >= parseFloat(document.getElementById('buy-auto-suzb').value);
+                } else { condSuzb = false; }
+            }
+
+            // 4. AUTORIZAÇÃO E EXECUÇÃO
+            const authorized = document.getElementById('buy-authorized').checked;
+            if (condFall && condDiff && condSuzb && authorized) {
+                document.getElementById('buy-authorized').checked = false; // Desativa após compra
+                executarTrade('compra');
+                document.getElementById('trade-status').innerText = "AUTO COMPRA: CRITÉRIOS OK";
+            }
+        }
+
         // LÓGICA DE AUTO-FECHAMENTO (Take Profit / Stop)
         if (posicaoTotal !== 0) {
             const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
@@ -342,6 +416,15 @@
      */
     function executarTrade(tipo) {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora], qty = parseInt(document.getElementById('trade-qty').value), precoAtual = atual.klbn;
+        
+        // GESTÃO DE SALDO (INDICADOR SILVIO)
+        if (primeiroTrade) {
+            primeiroTrade = false;
+            // O primeiro trade é o capital semente, não altera saldo inicial (zero)
+        } else {
+            saldoFinanceiro += (tipo === 'venda' ? 1 : -1) * qty * precoAtual;
+        }
+
         if (tipo === 'compra') {
             if (posicaoTotal >= 0) { precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); posicaoTotal += qty; }
             else {
@@ -373,6 +456,9 @@
     function zerarTudo() {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         if (posicaoTotal !== 0) {
+            // ATUALIZA SALDO (LIQUIDAÇÃO)
+            saldoFinanceiro += posicaoTotal * atual.klbn;
+            
             let resFinal = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal);
             apurarResultado(resFinal);
             document.getElementById('trade-status').innerText = "ZERADO";
