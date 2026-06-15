@@ -99,17 +99,17 @@
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-profit">
                 <span style="flex: 1;">Lucro >= R$</span>
-                <input type="number" id="val-auto-profit" value="500">
+                <input type="number" id="val-auto-profit" value="500.00" step="0.01" style="width: 60px;">
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-high">
                 <span style="flex: 1;">PREÇO > 2°ATIVO</span>
-                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1"> <span>%</span>
+                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1" style="width: 60px;"> <span>%</span>
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-low">
                 <span style="flex: 1;">PREÇO < 2°ATIVO</span>
-                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1"> <span>%</span>
+                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1" style="width: 60px;"> <span>%</span>
             </div>
         </div>
 
@@ -117,18 +117,18 @@
         <div class="painel">
             <div class="label-info">COMPRA AUTOMÁTICA</div>
             <div class="auto-row" title="Queda máxima de KLBN11 nos últimos 4 dias">
-                <span style="flex: 2; font-size: 0.85em;">QUEDA 4D > %</span>
-                <input type="number" id="buy-auto-fall" value="3.0" step="0.1">
+                <span style="flex: 2; font-size: 0.8em;">QUEDA EM 4 DIAS ></span>
+                <input type="number" id="buy-auto-fall" value="3.0" step="0.1" style="width: 50px;"> <span>%</span>
                 <input type="checkbox" id="buy-req-fall" checked> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row">
-                <span style="flex: 2; font-size: 0.85em;">DIVERG. < %</span>
-                <input type="number" id="buy-auto-diff" value="-1.5" step="0.1">
+                <span style="flex: 2; font-size: 0.8em;">DIVERGENCIA <</span>
+                <input type="number" id="buy-auto-diff" value="-1.5" step="0.1" style="width: 50px;"> <span>%</span>
                 <input type="checkbox" id="buy-req-diff" checked> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row">
-                <span style="flex: 2; font-size: 0.85em;">SUZB 1H > %</span>
-                <input type="number" id="buy-auto-suzb" value="0.5" step="0.1">
+                <span style="flex: 2; font-size: 0.8em;">SUBIDA SUZB 1H ></span>
+                <input type="number" id="buy-auto-suzb" value="0.5" step="0.1" style="width: 50px;"> <span>%</span>
                 <input type="checkbox" id="buy-req-suzb" checked> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row" style="margin-top: 8px; border-top: 1px solid #222; padding-top: 5px;">
