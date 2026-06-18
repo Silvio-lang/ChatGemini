@@ -131,6 +131,10 @@
                 <input type="number" id="buy-auto-suzb" value="0.5" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
                 <input type="checkbox" id="buy-req-suzb" checked> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
+            <div class="auto-row">
+                <span style="flex: 1;">MULTIPLICADOR DIVERGÊNCIA</span>
+                <input type="number" id="buy-auto-mult" value="1.5" step="0.1" style="width: 60px; text-align: right;">
+            </div>
             <div class="auto-row" style="margin-top: 8px; border-top: 1px solid #222; padding-top: 5px;">
                 <input type="checkbox" id="buy-authorized">
                 <span style="flex: 1; color: #0ff; font-weight: bold;">AUTORIZAR COMPRA</span>
@@ -374,9 +378,14 @@
                 condFall = queda >= parseFloat(document.getElementById('buy-auto-fall').value);
             }
 
-            // 2. DIVERGÊNCIA
+            // 2. DIVERGÊNCIA (Com Multiplicador por Lote)
             if (document.getElementById('buy-req-diff').checked) {
-                condDiff = atual.diff <= parseFloat(document.getElementById('buy-auto-diff').value);
+                const baseDiff = parseFloat(document.getElementById('buy-auto-diff').value);
+                const multLote = parseFloat(document.getElementById('buy-auto-mult').value);
+                const lotePadrao = parseInt(document.getElementById('trade-qty').value) || 1000;
+                const numLotes = Math.max(0, posicaoTotal / lotePadrao);
+                const diffAlvo = baseDiff * Math.pow(multLote, numLotes);
+                condDiff = atual.diff <= diffAlvo;
             }
 
             // 3. SUBIDA SUZB 1H
@@ -391,7 +400,7 @@
             // 4. AUTORIZAÇÃO E EXECUÇÃO
             const authorized = document.getElementById('buy-authorized').checked;
             if (condFall && condDiff && condSuzb && authorized) {
-                document.getElementById('buy-authorized').checked = false; // Desativa após compra
+                // Mantém autorização ativa para novos lotes escalonados
                 executarTrade('compra');
                 document.getElementById('trade-status').innerText = "AUTO COMPRA: CRITÉRIOS OK";
             }
