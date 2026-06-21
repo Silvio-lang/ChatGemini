@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Osciloscópio B3 - KLBN11 v4.3</title>
-    <!-- BIBLIOTECAS EXTERNAS: Plotly para gráficos de alta performance -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-    <!-- DADOS: Gerado pelo script Python, contém as séries históricas processadas -->
     <script src="KLBNdados.js"></script>
     <style>
         /* ARQUITETURA DE DESIGN: Dark Mode estilo Terminal para traders */
@@ -17,7 +15,7 @@
         #chart-area { flex: 4; display: flex; flex-direction: column; min-width: 0; }
         #chart-container { flex: 1; background-color: #000; min-height: 250px; }
         
-        /* BARRA DE AÇÃO: Posicionada para fácil acesso mobile */
+        /* BARRA DE AÇÃO */
         #action-bar { background-color: #111; border-top: 1px solid #0f0; padding: 8px; display: flex; gap: 8px; justify-content: center; align-items: center; }
         .btn-action { flex: 1; padding: 12px 5px; font-weight: bold; border: 1px solid #0f0; background: transparent; color: #0f0; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
         .btn-buy { border-color: #0ff; color: #0ff; }
@@ -67,44 +65,39 @@
     </div>
 
     <div id="sidebar">
-        <!-- MÉTRICAS DE MERCADO -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">DIVERGÊNCIA</div><div id="diff-display" class="quadro-valor">0.00%</div></div>
             <div class="quadro"><div class="quadro-titulo">MULTIPLICADOR</div><div id="v-mult" class="quadro-valor destaque-laranja">1.0000</div></div>
             <div class="quadro"><div class="quadro-titulo">DIAS DECORRIDOS</div><div id="days-count-display" class="quadro-valor" style="color: #fff;">0</div></div>
         </div>
-        <!-- MÉTRICAS DE CARTEIRA -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">AÇÕES EM CARTEIRA</div><div id="pos-qty-display" class="quadro-valor destaque-azul">0</div></div>
             <div class="quadro"><div class="quadro-titulo">PREÇO MÉDIO</div><div id="avg-price-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">LUCRO ABERTO</div><div id="pnl-real-display" class="quadro-valor">0.00</div></div>
         </div>
-        <!-- MÉTRICAS DE PERFORMANCE -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">LUCRO ACUMULADO</div><div id="total-profit-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">FATOR LUCRO</div><div id="profit-factor-display" class="quadro-valor">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">WIN RATE</div><div id="win-rate-display" class="quadro-valor">0%</div></div>
         </div>
 
-        <!-- MÉTRICAS EXTRAS -->
         <div class="info-grid">
             <div class="quadro"><div class="quadro-titulo">LUCRO AÇÃO (1 LT)</div><div id="lucro-acao-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
             <div class="quadro"><div class="quadro-titulo">AÇÕES EQV.CAP.</div><div id="eqv-cap-display" class="quadro-valor destaque-azul">0</div></div>
             <div class="quadro" style="display: none;"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
         </div>
 
-        <!-- AUTOMAÇÃO: Take Profit e Stop por Divergência ou Lucro Financeiro -->
         <div class="painel">
             <div class="label-info">FECHAMENTO AUTOMÁTICO</div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-profit" checked>
                 <span style="flex: 1;">Lucro >=</span>
-                <input type="number" id="val-auto-profit" value="250.00" step="0.01" style="width: 60px; text-align: right;"> <span>R$</span>
+                <input type="number" id="val-auto-profit" value="150.00" step="0.01" style="width: 60px; text-align: right;"> <span>R$</span>
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-high" checked>
                 <span style="flex: 1;">PREÇO > 2°ATIVO</span>
-                <input type="number" id="val-auto-diff-high" value="1.50" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
+                <input type="number" id="val-auto-diff-high" value="1.00" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
             </div>
             <div class="auto-row">
                 <input type="checkbox" id="chk-auto-diff-low">
@@ -113,7 +106,6 @@
             </div>
         </div>
 
-        <!-- COMPRA AUTOMÁTICA (Indicadores Silvio) -->
         <div class="painel">
             <div class="label-info">COMPRA AUTOMÁTICA</div>
             <div class="auto-row">
@@ -144,6 +136,10 @@
             <div class="auto-row" style="margin-top: 8px; border-top: 1px solid #222; padding-top: 5px;">
                 <input type="checkbox" id="buy-authorized" checked>
                 <span style="flex: 1; color: #0ff; font-weight: bold;">AUTORIZAR COMPRA</span>
+            </div>
+            <div class="auto-row" style="margin-top: 10px; border-top: 1px solid #030; padding-top: 10px;">
+                <input type="checkbox" id="chk-disable-pause">
+                <span style="flex: 1; color: #ff9900; font-weight: bold;">MODO CONTÍNUO (Sem Pausa)</span>
             </div>
         </div>
 
@@ -185,7 +181,6 @@
     let primeiroTrade = true;
     let refDataInicio = null;
     let refPrecoInicio = null;
-    let horasJanela = 140; 
     let lastBuyTime = 0;   
     
     // VARIÁVEIS DE RETENÇÃO (LATCH) PARA A BANCADA DE DIAGNÓSTICO
@@ -265,8 +260,9 @@
         } else { 
             document.getElementById('btn-play').innerText = "PARAR"; 
             
-            // RESET OPERACIONAL: Limpa o alarme anterior ao clicar em CONTINUAR/INICIAR
+            // RESET OPERACIONAL: Limpa os alarmes antigos ao clicar em CONTINUAR
             ultimoLucroRegistrado = 0.00; 
+            ocultarPainel();
 
             if (refDataInicio === null) {
                 const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
@@ -292,11 +288,13 @@
     }
 
     function atualizarJanela(dias) {
-        hoursJanela = parseInt(dias) * 7; 
         atualizarGrafico();
     }
 
-    function pararMotor() { 
+ function pararMotor() {
+        // Se o modo contínuo estiver marcado, o circuito ignora a pausa e retorna imediatamente
+        if (document.getElementById('chk-disable-pause')?.checked) return;
+
         if (playInterval) clearInterval(playInterval); 
         playInterval = null; 
         if (typeof gerarSnapshotDiagnostico === 'function') {
@@ -352,14 +350,6 @@
             }
         }
         
-        // RETENÇÃO SEGURA DO LUCRO REGISTRADO ANTES DA ZERAGEM
-        if (tipo === 'venda' && motivo !== "") {
-            // Se o motivo veio preenchido, significa que foi disparo do robô automático
-            // Mantemos o valor fixado na memória global para a pintura do fundo durar a pausa inteira
-        } else {
-            ultimoLucroRegistrado = 0.00;
-        }
-
         pararMotor();
         document.getElementById('btn-play').innerText = "CONTINUAR";
         
@@ -404,7 +394,21 @@
 
         document.getElementById('calculated-diff-trigger').innerText = `(Gatilho: ${diffAlvo.toFixed(2)}%)`;
 
-        const inicio = Math.max(0, horaAtualIdx - horasJanela + 1, indiceSegundoDia - 1);
+        // --- CÁLCULO DINÂMICO DA JANELA HORIZONTAL (DIAS REAIS) ---
+        let diasDesejados = parseInt(document.getElementById('days-window-select').value) || 20;
+        let datasContadas = new Set();
+        let inicio = horaAtualIdx;
+
+        while (inicio > 0 && datasContadas.size < diasDesejados) {
+            datasContadas.add(blocosHoras[inicio].data);
+            if (datasContadas.size < diasDesejados || datasContadas.has(blocosHoras[inicio - 1]?.data)) {
+                inicio--;
+            } else {
+                break;
+            }
+        }
+        inicio = Math.max(0, inicio, indiceSegundoDia - 1);
+
         let xArr = [], yK = [], yS = [], tArr = [];
         let divisoresDia = [];
         let ticksHorizontais = [];
@@ -430,7 +434,15 @@
         ], {
             paper_bgcolor: '#000', plot_bgcolor: '#000', margin: { t: 30, r: 10, b: 30, l: 40 },
             showlegend: true, legend: { font: { color: '#0f0', size: 10 }, orientation: 'h', y: 1.15 },
-            xaxis: { color: '#0f0', gridcolor: '#030', range: [inicio, inicio + horasJanela], tickmode: 'array', tickvals: ticksHorizontais.map(t => t.val), ticktext: ticksHorizontais.map(t => t.label) },
+            xaxis: { 
+                color: '#0f0', 
+                gridcolor: '#030', 
+                // Lendo a janela de dias diretamente do componente da tela para evitar travamentos
+                range: [inicio, inicio + ((parseInt(document.getElementById('days-window-select').value) || 20) * 7)], 
+                tickmode: 'array', 
+                tickvals: ticksHorizontais.map(t => t.val), 
+                ticktext: ticksHorizontais.map(t => t.label) 
+            },
             yaxis: { color: '#0f0', gridcolor: '#030', autorange: true },
             shapes: divisoresDia
         });
@@ -455,9 +467,14 @@
             ultimoLucroRegistrado = lucroAberto; 
         }
 
+        // --- DISPLAY DO SIDEBAR COM RETENÇÃO DE PICO ESTABILIZADA ---
         const openProfitEl = document.getElementById('pnl-real-display');
-        openProfitEl.innerText = lucroAberto.toFixed(2);
-        openProfitEl.className = 'quadro-valor ' + (lucroAberto < 0 ? 'negativo' : '');
+        if (openProfitEl) {
+            let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
+                                (motivoParadaReal === "ALVO RENDIMENTO R$" ? ultimoLucroRegistrado : 0.00);
+            openProfitEl.innerText = lucroExibicao.toFixed(2);
+            openProfitEl.className = 'quadro-valor ' + (lucroExibicao < 0 ? 'negativo' : '');
+        }
 
         document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
         document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
@@ -489,12 +506,29 @@
             const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
             const authorized = document.getElementById('buy-authorized').checked;
 
+// --- BLOCO DE DISPARO AUTOMÁTICO COM MODO CONTÍNUO ---
             if (allMandatoryTrue && anyConditionTrue && authorized) {
                 motivoParadaReal = "Compra Automática";
+                
+                // Lendo o status do nosso novo interruptor de modo contínuo
+                let modoContinuo = document.getElementById('chk-disable-pause')?.checked || false;
+
+                if (!modoContinuo) {
+                    // Se o modo contínuo NÃO estiver ativo, ele faz o procedimento padrão: pausa e exibe dados
+                    pararMotor(); 
+                    document.getElementById('btn-play').innerText = "CONTINUAR";
+                    
+                    // Código que abre a sua janela de diagnóstico (coloque a sua chamada aqui se houver, ex: abrirDiagnostico();)
+                } else {
+                    // Se o modo contínuo ESTIVER ativo, apenas registra no console ou status e deixa o motor girar!
+                    console.log("Trade automático executado em Modo Contínuo.");
+                }
+                
+                // Dispara a execução da ordem financeira normalmente
                 executarTrade('compra');
                 return; 
             } else if (authorized) {
-                 document.getElementById('trade-status').innerText = `AUTO FALHOU: M=${allMandatoryTrue} A=${anyConditionTrue}`;
+                document.getElementById('trade-status').innerText = `AUTO EM ESPERA...`;
             }
         }
 
@@ -515,9 +549,9 @@
             }
         }
 
-        // --- GRAMPO VISUAL DE SEGURANÇA (As 3 Janelinhas de Ajuste) ---
+// --- GRAMPO VISUAL DE SEGURANÇA CORRIGIDO ---
         try {
-            let divPainel = atual.diff;
+            let divPanel = atual.diff;
             let campoInputCompra = document.getElementById('buy-auto-diff');
             let campoInputVendaPercentual = document.getElementById('val-auto-diff-high'); 
             let campoInputVendaLucro = document.getElementById('val-auto-profit'); 
@@ -525,43 +559,43 @@
             let gatilhoVendaBase = campoInputVendaPercentual ? parseFloat(campoInputVendaPercentual.value) || 0 : 0;
             let gatilhoLucroAlvo = campoInputVendaLucro ? parseFloat(campoInputVendaLucro.value) || 0 : 0;
 
-            // 1. Compra: Calibrada estritamente com a variável real multiplicada (diffAlvo)
- // 1. Compra: Calibrada com a condição real de disparo do robô (condDiff)
+            // Correção da Compra: Se a condição for atendida, pinta de vermelho. Se sair da condição, volta ao normal!
             if (campoInputCompra) {
                 if (condDiff || motivoParadaReal === "Compra Automática") {
                     campoInputCompra.style.setProperty('background-color', '#ff0000', 'important');
                     campoInputCompra.style.setProperty('color', '#ffffff', 'important');
                     campoInputCompra.style.fontWeight = "bold";
                 } else {
-                    campoInputCompra.style.backgroundColor = "";
-                    campoInputCompra.style.color = "";
+                    // Restaura as cores originais do terminal estilo dark mode
+                    campoInputCompra.style.setProperty('background-color', '#000000', 'important');
+                    campoInputCompra.style.setProperty('color', '#00ff00', 'important');
                     campoInputCompra.style.fontWeight = "normal";
                 }
             }
-            // 2. Venda por Divergência Alta
+
+            // Correção da Venda por Percentual
             if (campoInputVendaPercentual) {
-                if (divPainel >= gatilhoVendaBase) {
+                if (divPanel >= gatilhoVendaBase) {
                     campoInputVendaPercentual.style.setProperty('background-color', '#ff0000', 'important');
                     campoInputVendaPercentual.style.setProperty('color', '#ffffff', 'important');
                     campoInputVendaPercentual.style.fontWeight = "bold";
                 } else {
-                    campoInputVendaPercentual.style.backgroundColor = "";
-                    campoInputVendaPercentual.style.color = "";
+                    campoInputVendaPercentual.style.setProperty('background-color', '#000000', 'important');
+                    campoInputVendaPercentual.style.setProperty('color', '#00ff00', 'important');
                     campoInputVendaPercentual.style.fontWeight = "normal";
                 }
             }
 
-            // 3. Venda por Lucro Financeiro em Reais (Com Trava Magnética Estabilizada)
+            // Correção da Venda por Lucro Financeiro
             if (campoInputVendaLucro) {
                 let lucroParaAvaliar = (posicaoTotal !== 0) ? lucroAberto : ultimoLucroRegistrado;
-                
                 if (lucroParaAvaliar >= gatilhoLucroAlvo && (posicaoTotal !== 0 || motivoParadaReal === "ALVO RENDIMENTO R$")) {
                     campoInputVendaLucro.style.setProperty('background-color', '#ff0000', 'important');
                     campoInputVendaLucro.style.setProperty('color', '#ffffff', 'important');
                     campoInputVendaLucro.style.fontWeight = "bold";
                 } else {
-                    campoInputVendaLucro.style.backgroundColor = "";
-                    campoInputVendaLucro.style.color = "";
+                    campoInputVendaLucro.style.setProperty('background-color', '#000000', 'important');
+                    campoInputVendaLucro.style.setProperty('color', '#00ff00', 'important');
                     campoInputVendaLucro.style.fontWeight = "normal";
                 }
             }
@@ -570,11 +604,17 @@
         }
     }
 
-    function apurarResultado(val) {
-        lucroAcumulado += val; totalTrades++;
-        if (val > 0) { ganhosBrutos += val; tradesVencedores++; } else { perdasBrutas += Math.abs(val); }
+function apurarResultado(val) {
+        lucroAcumulado += val; 
+        totalTrades++;
+        if (val > 0) { 
+            ganhosBrutos += val; 
+            tradesVencedores++; 
+        } else if (val < 0) { 
+            perdasBrutas += Math.abs(val); 
+        }
+        // Se val for 0, ele apenas conta o trade, mas não altera ganhos nem perdas!
     }
-
     function zerarTudo() {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         if (posicaoTotal !== 0) {
@@ -591,18 +631,32 @@
     window.onload = prepararDados;
 </script>
 
-<!-- ======================================================================= -->
-<!-- BANCADA DE DIAGNÓSTICO UNIFICADA - TOTALMENTE ALINHADA COM O MOTOR UI   -->
-<!-- ======================================================================= -->
-<div id="containerDiagnostico" style="position: fixed; bottom: 150px; left: 150px; z-index: 9999; background: #f8f9fa; border: 2px solid #ccc; padding: 10px; border-radius: 5px; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); width: 340px;">
+<div id="containerDiagnostico" style="position: fixed; bottom: 85px; left: 15px; z-index: 9999; background: #f8f9fa; border: 2px solid #ccc; padding: 10px; border-radius: 5px; box-shadow: 2px 2px 10px rgba(0,0,0,0.3); width: 320px; display: none;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
         <span style="font-weight: bold; font-family: sans-serif; font-size: 12px; color: #333;">Bancada de Diagnóstico</span>
-        <button onclick="copiarDiagnostico()" style="cursor: pointer; padding: 2px 8px; font-size: 11px; background-color: #007bff; color: white; border: none; border-radius: 3px;">Copiar Dados</button>
+        <div>
+            <button onclick="copiarDiagnostico()" style="cursor: pointer; padding: 2px 8px; font-size: 11px; background-color: #007bff; color: white; border: none; border-radius: 3px; margin-right: 5px;">Copiar</button>
+            <button onclick="ocultarPainel()" style="cursor: pointer; padding: 2px 6px; font-size: 11px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-weight: bold;">X</button>
+        </div>
     </div>
     <textarea id="painelDiagnostico" rows="14" style="width: 100%; font-family: monospace; font-size: 11px; resize: none; box-sizing: border-box; background: #fff; color: #000;" placeholder="Aguardando operação..." readonly></textarea>
 </div>
 
+<button id="btnReabrirDiagnostico" onclick="exibirPainel()" style="position: fixed; bottom: 85px; left: 15px; z-index: 9998; background-color: #222; color: #0f0; border: 1px solid #0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: none;">📊 DIAGNÓSTICO</button>
+
 <script>
+function exibirPainel() {
+    document.getElementById("containerDiagnostico").style.display = "block";
+    document.getElementById("btnReabrirDiagnostico").style.display = "none";
+}
+
+function ocultarPainel() {
+    document.getElementById("containerDiagnostico").style.display = "none";
+    if (document.getElementById("painelDiagnostico").value !== "") {
+        document.getElementById("btnReabrirDiagnostico").style.display = "block";
+    }
+}
+
 function copiarDiagnostico() {
     let textarea = document.getElementById("painelDiagnostico");
     if (textarea && textarea.value) {
@@ -658,6 +712,8 @@ function gerarSnapshotDiagnostico(motivo, diffAlvoForced = null) {
         
         let painel = document.getElementById("painelDiagnostico");
         if (painel) { painel.value = relatorio; }
+        
+        exibirPainel();
         
     } catch (err) {
         console.log("Erro no diagnóstico visual: ", err.message);
