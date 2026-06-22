@@ -43,6 +43,35 @@
         .auto-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.8em; }
         .auto-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
         .auto-row input[type=number] { width: 50px; height: 20px; text-align: right; padding-right: 2px; }
+/*======================================================================================================================= */
+/* ESTILO DA CAIXA FLUTUANTE DO HISTÓRICO DE BACKTEST */
+#containerBacktest {
+    position: fixed;
+    bottom: 85px;
+    right: 15px;
+    z-index: 9999;
+    background: #111;
+    border: 2px solid #fa0; /* Laranja para diferenciar do Diagnóstico */
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3);
+    width: 380px;
+    display: none;
+}
+#historicoJanela {
+    width: 100%;
+    height: 220px;
+    background: #000;
+    color: #0f0;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    overflow-y: scroll;
+    border: 1px solid #333;
+    padding: 5px;
+    box-sizing: border-box;
+    white-space: pre;
+}
+/*===============================================================*/
     </style>
 </head>
 <body>
@@ -88,50 +117,27 @@
         </div>
 
         <div class="painel">
-            <div class="label-info">FECHAMENTO AUTOMÁTICO</div>
+            <h3 style="font-size:0.8rem; margin-top: 1px; margin-bottom: 1px; text-align: center;">COMPRA AUTOMÁTICA</h3>
             <div class="auto-row">
-                <input type="checkbox" id="chk-auto-profit" checked>
-                <span style="flex: 1;">Lucro >=</span>
-                <input type="number" id="val-auto-profit" value="150.00" step="0.01" style="width: 60px; text-align: right;"> <span>R$</span>
-            </div>
-            <div class="auto-row">
-                <input type="checkbox" id="chk-auto-diff-high" checked>
-                <span style="flex: 1;">PREÇO > 2°ATIVO</span>
-                <input type="number" id="val-auto-diff-high" value="1.00" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
-            </div>
-            <div class="auto-row">
-                <input type="checkbox" id="chk-auto-diff-low">
-                <span style="flex: 1;">PREÇO < 2°ATIVO</span>
-                <input type="number" id="val-auto-diff-low" value="-1.50" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
-            </div>
-        </div>
-
-        <div class="painel">
-            <div class="label-info">COMPRA AUTOMÁTICA</div>
-            <div class="auto-row">
-                <span id="label-diff" style="flex: 1;">DIVERGENCIA <</span>
-                <input type="number" id="buy-auto-diff" value="-1.0" step="0.1" style="width: 60px; text-align: right;">
+                <span id="label-diff" style="flex: 1;">DIVERGENCIA SUZB-KLBN:<</span>
                 <span id="calculated-diff-trigger" style="margin-left: 5px; font-size: 0.8em; color: #aaa;"></span>
+                <input type="number" id="buy-auto-diff" value="-1.0" step="0.1" style="width: 60px; text-align: right;">
                 <span>%</span>
                 <input type="checkbox" id="buy-req-diff" checked> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row">
-                <span id="label-suzb" style="flex: 1;">SUBIDA SUZB 1H ></span>
+                <span id="label-suzb" style="flex: 1;">SUBIDA SUZB ULT.HORA: ></span>
                 <input type="number" id="buy-auto-suzb" value="0.5" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
                 <input type="checkbox" id="buy-req-suzb"> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row" title="Queda máxima de KLBN11 nos últimos 4 dias">
-                <span id="label-fall" style="flex: 1;">QUEDA EM 4 DIAS ></span>
+                <span id="label-fall" style="flex: 1;">QUEDA KLBN EM 4 DIAS: ></span>
                 <input type="number" id="buy-auto-fall" value="3.0" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
                 <input type="checkbox" id="buy-req-fall"> <span style="font-size: 0.7em;">OBRIG</span>
             </div>
             <div class="auto-row">
                 <span style="flex: 1;">MULTIPLICADOR DIVERGÊNCIA</span>
                 <input type="number" id="buy-auto-mult" value="1.5" step="0.1" style="width: 60px; text-align: right;">
-            </div>
-            <div class="auto-row">
-                <span style="flex: 1;">INTERVALO MÍN. (MIN)</span>
-                <input type="number" id="buy-min-interval" value="5" step="1" style="width: 60px; text-align: right;">
             </div>
             <div class="auto-row" style="margin-top: 8px; border-top: 1px solid #222; padding-top: 5px;">
                 <input type="checkbox" id="buy-authorized" checked>
@@ -143,8 +149,22 @@
             </div>
         </div>
 
+        <div class="painel">
+            <h3 style="font-size:0.8rem; margin-top: 1px; margin-bottom: 1px; text-align: center;">FECHAMENTO AUTOMÁTICO</h3>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-profit" checked>
+                <span style="flex: 1;">Lucro >=</span>
+                <input type="number" id="val-auto-profit" value="150.00" step="10.00" style="width: 60px; direction: rtl !important; padding-right: 5px; text-align: right;"> <span>R$</span>
+            </div>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-diff-high" checked>
+                <span style="flex: 1;">PREÇO > 2°ATIVO</span>
+                <input type="number" id="val-auto-diff-high" value="1.00" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
+            </div>
+        </div>
+
         <div class="painel" style="display: flex; align-items: center; gap: 10px;">
-            <div style="flex: 1;"><div class="label-info">LOTE OPERACIONAL</div><input type="number" id="trade-qty" value="1000" step="100"></div>
+            <div style="flex: 1;"><div class="label-info">LOTE OPERACIONAL</div><input type="number" id="trade-qty" value="900" step="100"></div>
             <div id="trade-status" style="flex: 1; font-size: 0.6em; color: #888; text-align: center; border-left: 1px solid #333;">STANDBY</div>
         </div>
     </div>
@@ -152,6 +172,9 @@
 
 <div id="controles">
     <button onclick="togglePlay()" id="btn-play" style="padding: 10px; background: transparent; border: 1px solid #0f0; color: #0f0; font-weight: bold; min-width: 80px;">INICIAR</button>
+
+<button id="btnVerBacktest" onclick="exibirBacktest()" style="padding: 10px; background: transparent; border: 1px solid #fa0; color: #fa0; font-weight: bold; min-width: 100px;">📋 VER BACKTEST</button>
+
     <div style="flex: 2;"><div class="label-info">Navegação Horária</div><input type="range" id="hour-slider" min="0" value="0" oninput="mudarHora(this.value)"></div>
     <div style="flex: 1;">
         <div class="label-info">Janela Dias</div>
@@ -181,7 +204,7 @@
     let primeiroTrade = true;
     let refDataInicio = null;
     let refPrecoInicio = null;
-    let lastBuyTime = 0;   
+    let lastBuyTime = "";   
     
     // VARIÁVEIS DE RETENÇÃO (LATCH) PARA A BANCADA DE DIAGNÓSTICO
     let ultimoLucroRegistrado = 0.00;
@@ -192,10 +215,45 @@
     let precoMedio = 0;     
     let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
     
+// NOVAS VARIÁVEIS OPERACIONAIS PARA O HISTÓRICO
+    let listaSaidasBacktest = []; 
+    let dataHoraInicioSimulacao = "";
+
+    // FUNÇÕES DE CONTROLE DA CAIXA FLUTUANTE
+    function exibirBacktest() {
+        document.getElementById("containerBacktest").style.display = "block";
+        document.getElementById("btnVerBacktest").style.display = "none";
+        renderizarHistoricoTela();
+    }
+
+function ocultarBacktest() {
+        document.getElementById("containerBacktest").style.display = "none";
+        document.getElementById("btnVerBacktest").style.display = "block";
+    }
+
+function renderizarHistoricoTela() {
+        let janela = document.getElementById("historicoJanela");
+        if (!janela) return;
+        
+        if (listaSaidasBacktest.length === 0) {
+            janela.innerText = "Aguardando execuções de vendas...";
+            return;
+        }
+
+        let conteudo = "DATA/HORA SAÍDA  |  QTD  | PREÇO | LUCRO OP. | DIVERG. | GATILHO\n";
+        conteudo += "----------------------------------------------------------------------\n";
+        listaSaidasBacktest.forEach(t => {
+            conteudo += `${t.dataHora} | ${String(t.qtd).padStart(5, ' ')} | ${t.preco.toFixed(2)} | R$ ${t.lucroOp.toFixed(2).padStart(7, ' ')} | ${t.divergencia.toFixed(2).padStart(6, ' ')}% | ${t.motivo}\n`;
+        });
+        janela.innerText = conteudo;
+        janela.scrollTop = janela.scrollHeight;
+    }
+
     function calcularDelay(nivel) {
         return Math.max(10, Math.round(1000 * Math.pow(0.954, nivel - 1) + 5));
     }
 
+    // Usando o tempo de exibição padrão de 2 segundos (2000 ms) exigido pelo sistema
     function atualizarLabelVelocidade(v) {
         document.getElementById('speed-val').innerText = "Nível: " + v;
         if (playInterval) { pararMotor(); iniciarMotor(); }
@@ -205,6 +263,7 @@
         const klbnRaw = DADOS_HISTORICOS.klbn;
         const suzbRaw = DADOS_HISTORICOS.suzb;
         const mapSuzb = new Map(suzbRaw.map(i => [i[0], i[1]]));
+        listaSaidasBacktest = []; // Limpa a memória para o novo teste
         
         dadosTratados = [];
         blocosHoras = [];
@@ -258,6 +317,12 @@
             pararMotor(); 
             document.getElementById('btn-play').innerText = "INICIAR"; 
         } else { 
+            // Localize dentro de togglePlay() o bloco else e adicione esta linha:
+    if (listaSaidasBacktest.length === 0 || refDataInicio === null) {
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+        // Guarda o carimbo de quando o teste iniciou para batizar o arquivo
+        dataHoraInicioSimulacao = atual.time.replace(/[: ]/g, "_");
+    }
             document.getElementById('btn-play').innerText = "PARAR"; 
             
             // RESET OPERACIONAL: Limpa os alarmes antigos ao clicar em CONTINUAR
@@ -291,7 +356,7 @@
         atualizarGrafico();
     }
 
- function pararMotor() {
+    function pararMotor() {
         // Se o modo contínuo estiver marcado, o circuito ignora a pausa e retorna imediatamente
         if (document.getElementById('chk-disable-pause')?.checked) return;
 
@@ -304,21 +369,36 @@
 
     function mudarHora(h) { motivoParadaReal = "Navegação Manual"; pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; horaAtualIdx = parseInt(h); minutoNaHora = 0; atualizarGrafico(); }
 
+// RECEPTOR GLOBAL DE APURAÇÃO - PONTE DIRETA SEM BLOQUEIO
+    function apurarResultado(val, motivoVenda = "Venda Manual", divVal = 0) {
+        if (isNaN(val) || val === undefined) return;
+
+        lucroAcumulado += val; 
+        totalTrades++;
+        
+        if (val > 0) { 
+            ganhosBrutos += val; 
+            tradesVencedores++; 
+        } else if (val < 0) { 
+            perdasBrutas += Math.abs(val); 
+        }
+
+        // PONTE DIRETA: Pega o horário direto do display da tela para evitar erros de índice
+        let dataHoraTela = document.getElementById('data-hora-display')?.innerText || "00/00/00 00:00";
+        let precoTela = parseFloat(document.getElementById('avg-price-display')?.innerText) || 0;
+        let divTela = parseFloat(document.getElementById('diff-display')?.innerText) || divVal;
+
+        // Envia direto para o histórico sem fazer checagem de matriz interna
+        registrarSaidaNoHistorico(dataHoraTela, parseInt(document.getElementById('trade-qty').value) || 900, precoTela, val, motivoVenda, divTela);
+    }
+
+    // 2. FUNÇÃO DE TRADES COM AS CHAVES ALINHADAS NOS BORNES CERTOS
     function executarTrade(tipo, motivo = "") {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         const qty = parseInt(document.getElementById('trade-qty').value);
         const precoAtual = atual.klbn;
         
-        if (playInterval) {
-            const tempoSimulador = new Date(atual.time).getTime();
-            const minIntervalMs = parseInt(document.getElementById('buy-min-interval').value) * 60000;
-            
-            if (tipo === 'compra' && lastBuyTime !== 0 && (tempoSimulador - lastBuyTime) < minIntervalMs) {
-                document.getElementById('trade-status').innerText = "AUTO: INTERVALO MÍNIMO SIMULADOR";
-                return;
-            }
-            if (tipo === 'compra') lastBuyTime = tempoSimulador; 
-        }
+        if (tipo === 'compra') lastBuyTime = atual.time; 
         
         if (primeiroTrade) {
             primeiroTrade = false;
@@ -326,42 +406,105 @@
             saldoFinanceiro += (tipo === 'venda' ? 1 : -1) * qty * precoAtual;
         }
 
-        if (tipo === 'compra') {
+        if (tipo === 'compra') { // BLOCO DE COMPRA
             if (posicaoTotal >= 0) { 
                 precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); 
                 posicaoTotal += qty; 
-            } else {
+            } else { // Cobertura de posição vendida
                 const qtyReduzir = Math.min(qty, Math.abs(posicaoTotal));
                 const res = (precoMedio - precoAtual) * qtyReduzir;
-                apurarResultado(res);
+                
                 posicaoTotal += qtyReduzir;
-                if (qty > qtyReduzir) { posicaoTotal = (qty - qtyReduzir); precoMedio = precoAtual; } else if (posicaoTotal === 0) precoMedio = 0;
+                if (qty > qtyReduzir) { 
+                    posicaoTotal = (qty - qtyReduzir); 
+                    precoMedio = precoAtual; 
+                } else if (posicaoTotal === 0) {
+                    precoMedio = 0;
+                }
+                
+                apurarResultado(res, motivo || "Compra Cobertura", atual.diff);
             }
-        } else {
+        } else { // BLOCO DE VENDA (Aqui passamos o motivo e a divergência para o histórico!)
             if (posicaoTotal <= 0) { 
                 precoMedio = ((Math.abs(posicaoTotal) * precoMedio) + (qty * precoAtual)) / (Math.abs(posicaoTotal) + qty); 
                 posicaoTotal -= qty; 
-            } else {
+            } else { // Venda Parcial ou Total de posição comprada
                 const qtyReduzir = Math.min(qty, posicaoTotal);
                 const res = (precoAtual - precoMedio) * qtyReduzir;
-                apurarResultado(res);
+                
                 posicaoTotal -= qtyReduzir;
-                if (qty > qtyReduzir) { posicaoTotal = -(qty - qtyReduzir); precoMedio = precoAtual; } else if (posicaoTotal === 0) precoMedio = 0;
+                if (qty > qtyReduzir) { 
+                    posicaoTotal = -(qty - qtyReduzir); 
+                    precoMedio = precoAtual; 
+                } else if (posicaoTotal === 0) {
+                    precoMedio = 0;
+                }
+                
+                // Ponte restabelecida com sucesso!
+                apurarResultado(res, motivo || "Venda Manual", atual.diff);
             }
         }
-        
-        pararMotor();
-        document.getElementById('btn-play').innerText = "CONTINUAR";
+
+        pararMotor(); 
+        document.getElementById('btn-play').innerText = "CONTINUAR"; 
         
         let statusMsg = `TRADE EXECUTADO: ${tipo.toUpperCase()} @ ${precoAtual.toFixed(2)}.`;
         if (tipo === 'compra') {
             statusMsg += ` DIV: ${atual.diff.toFixed(2)}%`;
         } else {
-            statusMsg += ` MOTIVO: ${motivo}`;
+            statusMsg += ` MOTIVO: ${motivo || "MANUAL"}`;
         }
         document.getElementById('trade-status').innerText = statusMsg + " AGUARDANDO...";
-        
         atualizarGrafico();
+    }
+
+    // 3. REGISTRADORES DO HISTÓRICO LIVRES E GLOBAIS
+    function registrarSaidaNoHistorico(dataHora, qtd, preco, lucroOp, motivo, divVal) {
+        const [dataPura, horaFull] = dataHora.split(' ');
+        const [ano, mes, dia] = dataPura.split('-');
+        const horaMin = horaFull.substring(0, 5);
+        const dataFormatada = `${dia}/${mes} ${horaMin}`;
+
+        let divProtegida = (typeof divVal === 'number') ? divVal : 0;
+        let lucroProtegido = (typeof lucroOp === 'number') ? lucroOp : 0;
+        let precoProtegido = (typeof preco === 'number') ? preco : 0;
+
+        listaSaidasBacktest.push({
+            dataHora: dataFormatada,
+            qtd: qtd,
+            preco: precoProtegido,
+            lucroOp: lucroProtegido,
+            motivo: motivo || "Venda",
+            divergencia: divProtegida
+        });
+
+        if (document.getElementById("containerBacktest").style.display === "block") {
+            renderizarHistoricoTela();
+        }
+    }
+
+    function salvarArquivoBacktest() {
+        if (listaSaidasBacktest.length === 0) {
+            alert("Não há dados de saídas para salvar neste backtest.");
+            return;
+        }
+
+        let textoArquivo = `=== RELATÓRIO DETALHADO DE OPERAÇÕES DE VENDA ===\n`;
+        textoArquivo += `Iniciado em carimbo: ${dataHoraInicioSimulacao}\n`;
+        textoArquivo += `----------------------------------------------------------------------\n`;
+        textoArquivo += `DATA/HORA SAÍDA  |  QTD  | PREÇO | LUCRO OP. | DIVERG. | GATILHO\n`;
+        textoArquivo += `----------------------------------------------------------------------\n`;
+        
+        listaSaidasBacktest.forEach(t => {
+            textoArquivo += `${t.dataHora} | ${String(t.qtd).padStart(5, ' ')} | ${t.preco.toFixed(2)} | R$ ${t.lucroOp.toFixed(2).padStart(7, ' ')} | ${t.divergencia.toFixed(2).padStart(6, ' ')}% | ${t.motivo}\n`;
+        });
+
+        let blob = new Blob([textoArquivo], { type: "text/plain;charset=utf-8" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Backtest_${dataHoraInicioSimulacao}.txt`;
+        link.click();
+        URL.revokeObjectURL(link.href);
     }
 
     function atualizarGrafico() {
@@ -374,8 +517,8 @@
         for (let i = 1; i <= lookback; i++) {
             const hIdx = horaAtualIdx - i;
             if (hIdx < 0) break;
-            const hist = dadosTratados[blocosHoras[hIdx].globalIdx];
-            if (hist.klbn > maxH) maxH = hist.klbn;
+            const htmlData = dadosTratados[blocosHoras[hIdx].globalIdx];
+            if (htmlData.klbn > maxH) maxH = htmlData.klbn;
         }
         const condFall = ((maxH - atual.klbn) / maxH) * 100 >= parseFloat(document.getElementById('buy-auto-fall').value);
 
@@ -437,7 +580,6 @@
             xaxis: { 
                 color: '#0f0', 
                 gridcolor: '#030', 
-                // Lendo a janela de dias diretamente do componente da tela para evitar travamentos
                 range: [inicio, inicio + ((parseInt(document.getElementById('days-window-select').value) || 20) * 7)], 
                 tickmode: 'array', 
                 tickvals: ticksHorizontais.map(t => t.val), 
@@ -467,7 +609,7 @@
             ultimoLucroRegistrado = lucroAberto; 
         }
 
-        // --- DISPLAY DO SIDEBAR COM RETENÇÃO DE PICO ESTABILIZADA ---
+        // --- DISPLAY DO SIDEBAR WITH LATCH EFFECT ---
         const openProfitEl = document.getElementById('pnl-real-display');
         if (openProfitEl) {
             let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
@@ -478,13 +620,29 @@
 
         document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
         document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
-        const pf = perdasBrutas === 0 ? ganhosBrutos : (ganhosBrutos / perdasBrutas);
+        
+        // --- CALIBRAÇÃO DINÂMICA DO PROFIT FACTOR ---
+// CORREÇÃO DO FATOR DE LUCRO (Substituído 'gains' por 'ganhosBrutos')
+       let pf = perdasBrutas === 0 ? (ganhosBrutos > 0 ? ganhosBrutos : 0.00) : (ganhosBrutos / perdasBrutas);
         document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
         document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
+        
         document.getElementById('trade-count-display').innerText = totalTrades;
+        
+        // CORREÇÃO DO WIN RATE
         const wr = totalTrades === 0 ? 0 : (tradesVencedores / totalTrades * 100);
         document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
         document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
+
+        // ATUALIZAÇÃO DINÂMICA DO LUCRO POR AÇÃO EM TEMPO REAL
+        if (playInterval && refPrecoInicio) {
+            const lucroAcao = (atual.klbn - refPrecoInicio) * 1000;
+            const lucroAcaoEl = document.getElementById('lucro-acao-display');
+            if (lucroAcaoEl) {
+                lucroAcaoEl.innerText = lucroAcao.toFixed(2);
+                lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
+            }
+        }
 
         if (playInterval && refPrecoInicio) {
             const lucroAcao = (atual.klbn - refPrecoInicio) * 1000;
@@ -506,25 +664,18 @@
             const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
             const authorized = document.getElementById('buy-authorized').checked;
 
-// --- BLOCO DE DISPARO AUTOMÁTICO COM MODO CONTÍNUO ---
+            // --- DISPARO AUTOMÁTICO COM MODO CONTÍNUO ---
             if (allMandatoryTrue && anyConditionTrue && authorized) {
                 motivoParadaReal = "Compra Automática";
-                
-                // Lendo o status do nosso novo interruptor de modo contínuo
                 let modoContinuo = document.getElementById('chk-disable-pause')?.checked || false;
 
                 if (!modoContinuo) {
-                    // Se o modo contínuo NÃO estiver ativo, ele faz o procedimento padrão: pausa e exibe dados
                     pararMotor(); 
                     document.getElementById('btn-play').innerText = "CONTINUAR";
-                    
-                    // Código que abre a sua janela de diagnóstico (coloque a sua chamada aqui se houver, ex: abrirDiagnostico();)
                 } else {
-                    // Se o modo contínuo ESTIVER ativo, apenas registra no console ou status e deixa o motor girar!
                     console.log("Trade automático executado em Modo Contínuo.");
                 }
                 
-                // Dispara a execução da ordem financeira normalmente
                 executarTrade('compra');
                 return; 
             } else if (authorized) {
@@ -535,12 +686,10 @@
         if (posicaoTotal !== 0) {
             const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
             const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
-            const chkDiffLow = document.getElementById('chk-auto-diff-low').checked, valDiffLow = parseFloat(document.getElementById('val-auto-diff-low').value);
             let trigger = false, mot = "";
             
             if (chkProfit && lucroAberto >= valProfit) { trigger = true; mot = "ALVO RENDIMENTO R$"; }
             else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "ALVO DIV ALTA %"; }
-            else if (chkDiffLow && atual.diff <= valDiffLow) { trigger = true; mot = "STOP DIV BAIXA %"; }
             
             if (trigger) { 
                 motivoParadaReal = mot;
@@ -549,7 +698,7 @@
             }
         }
 
-// --- GRAMPO VISUAL DE SEGURANÇA CORRIGIDO ---
+        // --- GRAMPO VISUAL DE SEGURANÇA ---
         try {
             let divPanel = atual.diff;
             let campoInputCompra = document.getElementById('buy-auto-diff');
@@ -559,21 +708,18 @@
             let gatilhoVendaBase = campoInputVendaPercentual ? parseFloat(campoInputVendaPercentual.value) || 0 : 0;
             let gatilhoLucroAlvo = campoInputVendaLucro ? parseFloat(campoInputVendaLucro.value) || 0 : 0;
 
-            // Correção da Compra: Se a condição for atendida, pinta de vermelho. Se sair da condição, volta ao normal!
             if (campoInputCompra) {
                 if (condDiff || motivoParadaReal === "Compra Automática") {
                     campoInputCompra.style.setProperty('background-color', '#ff0000', 'important');
                     campoInputCompra.style.setProperty('color', '#ffffff', 'important');
                     campoInputCompra.style.fontWeight = "bold";
                 } else {
-                    // Restaura as cores originais do terminal estilo dark mode
                     campoInputCompra.style.setProperty('background-color', '#000000', 'important');
                     campoInputCompra.style.setProperty('color', '#00ff00', 'important');
                     campoInputCompra.style.fontWeight = "normal";
                 }
             }
 
-            // Correção da Venda por Percentual
             if (campoInputVendaPercentual) {
                 if (divPanel >= gatilhoVendaBase) {
                     campoInputVendaPercentual.style.setProperty('background-color', '#ff0000', 'important');
@@ -586,7 +732,6 @@
                 }
             }
 
-            // Correção da Venda por Lucro Financeiro
             if (campoInputVendaLucro) {
                 let lucroParaAvaliar = (posicaoTotal !== 0) ? lucroAberto : ultimoLucroRegistrado;
                 if (lucroParaAvaliar >= gatilhoLucroAlvo && (posicaoTotal !== 0 || motivoParadaReal === "ALVO RENDIMENTO R$")) {
@@ -604,17 +749,35 @@
         }
     }
 
-function apurarResultado(val) {
+// RECEPTOR GLOBAL COM MANÔMETROS DE DIAGNÓSTICO
+    function apurarResultado(val, motivoVenda = "Venda Manual", divVal = 0) {
+        console.log("=== [MANÔMETRO 1] apurarResultado FOI CHAMADA ===");
+        console.log("Valor recebido:", val, "Motivo:", motivoVenda, "Div:", divVal);
+
+        if (isNaN(val) || val === undefined) {
+            console.log("⚠️ [ALERTA] Entrada barrada por ser NaN ou undefined!");
+            return;
+        }
+
         lucroAcumulado += val; 
         totalTrades++;
+        
         if (val > 0) { 
             ganhosBrutos += val; 
             tradesVencedores++; 
         } else if (val < 0) { 
             perdasBrutas += Math.abs(val); 
         }
-        // Se val for 0, ele apenas conta o trade, mas não altera ganhos nem perdas!
+
+        let dataHoraTela = document.getElementById('data-hora-display')?.innerText || "00/00/00 00:00";
+        let precoTela = parseFloat(document.getElementById('avg-price-display')?.innerText) || 0;
+        let divTela = parseFloat(document.getElementById('diff-display')?.innerText) || divVal;
+
+        console.log("Dados extraídos da tela para envio:", { dataHoraTela, precoTela, divTela });
+
+        registrarSaidaNoHistorico(dataHoraTela, parseInt(document.getElementById('trade-qty').value) || 900, precoTela, val, motivoVenda, divTela);
     }
+
     function zerarTudo() {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
         if (posicaoTotal !== 0) {
@@ -622,7 +785,7 @@ function apurarResultado(val) {
             let resFinal = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal);
             ultimoLucroRegistrado = resFinal;
             motivoParadaReal = "Zeragem Manual";
-            apurarResultado(resFinal);
+            apurarResultado(resFinal, "Zeragem Manual", atual.diff);apurarResultado(resFinal);
             document.getElementById('trade-status').innerText = "ZERADO";
         }
         posicaoTotal = 0; precoMedio = 0; ultimoLucroRegistrado = 0.00; pararMotor(); atualizarGrafico();
@@ -639,7 +802,7 @@ function apurarResultado(val) {
             <button onclick="ocultarPainel()" style="cursor: pointer; padding: 2px 6px; font-size: 11px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-weight: bold;">X</button>
         </div>
     </div>
-    <textarea id="painelDiagnostico" rows="14" style="width: 100%; font-family: monospace; font-size: 11px; resize: none; box-sizing: border-box; background: #fff; color: #000;" placeholder="Aguardando operação..." readonly></textarea>
+    <textarea id="painelDiagnostico" rows="14" style="width: 100%; font-family: monospace; font-size: 11px; resize: none; box-sizing: border-box; background: #fff; color: #000;" placeholder="Aguardando operation..." readonly></textarea>
 </div>
 
 <button id="btnReabrirDiagnostico" onclick="exibirPainel()" style="position: fixed; bottom: 85px; left: 15px; z-index: 9998; background-color: #222; color: #0f0; border: 1px solid #0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: none;">📊 DIAGNÓSTICO</button>
@@ -719,7 +882,168 @@ function gerarSnapshotDiagnostico(motivo, diffAlvoForced = null) {
         console.log("Erro no diagnóstico visual: ", err.message);
     }
 }
+
+function registrarSaidaNoHistorico(dataHora, qtd, preco, lucroOp, motivo, divVal) {
+        console.log("=== [MANÔMETRO 2] registrarSaidaNoHistorico RECEBEU OS DADOS ===");
+        
+        let divProtegida = (typeof divVal === 'number') ? divVal : 0;
+        let lucroProtegido = (typeof lucroOp === 'number') ? lucroOp : 0;
+        let precoProtegido = (typeof preco === 'number') ? preco : 0;
+
+        listaSaidasBacktest.push({
+            dataHora: dataHora,
+            qtd: qtd,
+            preco: precoProtegido,
+            lucroOp: lucroProtegido,
+            motivo: motivo || "Venda",
+            divergencia: divProtegida
+        });
+
+        console.log("Tamanho atual da listaSaidasBacktest:", listaSaidasBacktest.length);
+        console.log("Conteúdo atual do array:", listaSaidasBacktest);
+
+        if (document.getElementById("containerBacktest")) {
+            console.log("Elemento containerBacktest localizado na tela. Chamando renderização...");
+            renderizarHistoricoTela();
+        } else {
+            console.log("❌ [ERRO VISUAL] O elemento HTML 'containerBacktest' NÃO existe na página!");
+        }
+    }
+function salvarArquivoBacktest() {
+    console.log("=== INICIANDO SALVAMENTO DO ARQUIVO ===");
+    
+    // Verificação direta na variável local, sem o prefixo window
+    if (typeof listaSaidasBacktest === 'undefined' || listaSaidasBacktest.length === 0) {
+        alert("Não há dados de saídas para salvar neste backtest.");
+        return;
+    }
+
+    let textoArquivo = "=== RELATÓRIO DETALHADO DE OPERAÇÕES DE VENDA ===\n";
+    textoArquivo += "----------------------------------------------------------------------\n";
+    textoArquivo += "DATA/HORA SAÍDA  |  QTD  | PREÇO | LUCRO OP. | DIVERG. | GATILHO\n";
+    textoArquivo += "----------------------------------------------------------------------\n";
+    
+    // Varredura direta na variável que o console localizou
+    listaSaidasBacktest.forEach(t => {
+        let dataHora = t.dataHora || "00/00 00:00";
+        let qtd = t.qtd || 0;
+        let motivo = t.motivo || "Venda";
+
+        let precoVal = typeof t.preco === 'number' ? t.preco : parseFloat(t.preco);
+        if (isNaN(precoVal)) precoVal = 0;
+
+        let lucroVal = typeof t.lucroOp === 'number' ? t.lucroOp : parseFloat(t.lucroOp);
+        if (isNaN(lucroVal)) lucroVal = 0;
+
+        let divVal = typeof t.divergencia === 'number' ? t.divergencia : parseFloat(t.divergencia);
+        if (isNaN(divVal)) divVal = 0;
+
+        textoArquivo += `${dataHora} | ${String(qtd).padStart(5, ' ')} | ${precoVal.toFixed(2)} | R$ ${lucroVal.toFixed(2).padStart(7, ' ')} | ${divVal.toFixed(2).padStart(6, ' ')}% | ${motivo}\n`;
+    });
+
+    try {
+        let blob = new Blob([textoArquivo], { type: "text/plain;charset=utf-8" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Backtest_Relatorio.txt";
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        console.log("=== ARQUIVO ENVIADO COM SUCESSO PARA DOWNLOADS ===");
+    } catch (erro) {
+        console.error("Erro crítico no disparo do download:", erro);
+    }
+}
+
+    // --- FUNÇÕES DA BANCADA DE DIAGNÓSTICO ---
+    function exibirPainel() {
+        document.getElementById("containerDiagnostico").style.display = "block";
+        document.getElementById("btnReabrirDiagnostico").style.display = "none";
+    }
+
+    function ocultarPainel() {
+        document.getElementById("containerDiagnostico").style.display = "none";
+        if (document.getElementById("painelDiagnostico").value !== "") {
+            document.getElementById("btnReabrirDiagnostico").style.display = "block";
+        }
+    }
+
+    function copiarDiagnostico() {
+        let textarea = document.getElementById("painelDiagnostico");
+        if (textarea && textarea.value) {
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value);
+            let btn = document.querySelector("#containerDiagnostico button");
+            let txtOriginal = btn.innerText;
+            btn.innerText = "Copiado!";
+            btn.style.backgroundColor = "#28a745";
+            setTimeout(() => { btn.innerText = txtOriginal; btn.style.backgroundColor = "#007bff"; }, 2000);
+        }
+    }
+
+    function gerarSnapshotDiagnostico(motivo, diffAlvoForced = null) {
+        if (typeof dadosTratados === 'undefined' || dadosTratados.length === 0 || typeof horaAtualIdx === 'undefined') return;
+        
+        try {
+            const idxGlobal = blocosHoras[horaAtualIdx].globalIdx + minutoNaHora;
+            const atual = dadosTratados[idxGlobal];
+            if (!atual) return;
+
+            let divCurrent = atual.diff;
+            let baseDiff = parseFloat(document.getElementById('buy-auto-diff')?.value) || 0;
+            let multLote = parseFloat(document.getElementById('buy-auto-mult')?.value) || 1;
+            let lotePadrao = parseInt(document.getElementById('trade-qty')?.value) || 900;
+            let numLotes = Math.max(0, posicaoTotal / lotePadrao);
+            let gatilhoMult = (diffAlvoForced !== null) ? diffAlvoForced : (baseDiff * Math.pow(multLote, numLotes));
+            
+            let gatilhoVendaPercentual = parseFloat(document.getElementById('val-auto-diff-high')?.value) || 0;
+            let gatilhoFinAlvo = parseFloat(document.getElementById('val-auto-profit')?.value) || 0;
+
+            let alertaVisualCompraAtivo = divCurrent <= gatilhoMult; 
+            
+            let relatorio = `=== SNAPSHOT DE DIAGNÓSTICO ===\n`;
+            relatorio += `Motivo: ${motivo}\n`;
+            relatorio += `Hora Histórico: ${atual.time}\n`;
+            relatorio += `Preço KLBN11: R$ ${atual.klbn.toFixed(2)}\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `Divergência Atual (A): ${divCurrent.toFixed(2)}%\n`;
+            relatorio += `Gatilho Base Default : ${baseDiff.toFixed(2)}%\n`;
+            relatorio += `Gatilho Real (Mult)  : ${gatilhoMult.toFixed(2)}%\n`;
+            relatorio += `Gatilho Venda %      : ${gatilhoVendaPercentual.toFixed(2)}%\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `MONITOR FINANCEIRO EM REAIS\n`;
+            relatorio += `Lucro da Operação    : R$ ${ultimoLucroRegistrado.toFixed(2)}\n`;
+            relatorio += `Gatilho Alvo Venda   : R$ ${gatilhoFinAlvo.toFixed(2)}\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `Painel Sidebar (<=)  : ${alertaVisualCompraAtivo ? "VERMELHO (ALERTA BASE)" : "PADRÃO"}\n`;
+            relatorio += `Disparo Robô         : ENVIADO E EXECUTADO\n`;
+            relatorio += `Ações em Carteira    : ${posicaoTotal} \n`;
+            relatorio += `================================`;
+            
+            let painel = document.getElementById("painelDiagnostico");
+            if (painel) { painel.value = relatorio; }
+            exibirPainel();
+            
+        } catch (err) {
+            console.log("Erro no diagnóstico visual: ", err.message);
+        }
+    }
+    
+    window.onload = prepararDados;
 </script>
+
+<div id="containerBacktest">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <span style="font-weight: bold; font-family: sans-serif; font-size: 12px; color: #fa0;">Relatório de Vendas (Backtest)</span>
+        <div>
+            <button onclick="salvarArquivoBacktest()" style="cursor: pointer; padding: 2px 8px; font-size: 11px; background-color: #28a745; color: white; border: none; border-radius: 3px; margin-right: 5px; font-weight: bold;">Salvar .txt</button>
+            <button onclick="ocultarBacktest()" style="cursor: pointer; padding: 2px 6px; font-size: 11px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-weight: bold;">X</button>
+        </div>
+    </div>
+    <div id="historicoJanela">Aguardando execuções de vendas...</div>
+</div>
 
 </body>
 </html>
