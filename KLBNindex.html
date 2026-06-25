@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Osciloscópio B3 - KLBN11 v4.3</title>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="KLBNdados.js"></script>
+    <style>
+        /* ARQUITETURA DE DESIGN: Dark Mode estilo Terminal para traders */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #000; color: #0f0; margin: 0; display: flex; flex-direction: column; min-height: 100vh; font-size: 13px; }
+        header { background-color: #111; padding: 5px 15px; border-bottom: 1px solid #0f0; display: flex; justify-content: space-between; align-items: center; height: 30px; flex-shrink: 0; }
+        
+        #main-container { display: flex; flex: 1; flex-direction: row; overflow: visible; }
+        #chart-area { flex: 4; display: flex; flex-direction: column; min-width: 0; }
+        #chart-container { flex: 1; background-color: #000; min-height: 250px; }
+        
+        /* BARRA DE AÇÃO */
+        #action-bar { background-color: #111; border-top: 1px solid #0f0; padding: 8px; display: flex; gap: 8px; justify-content: center; align-items: center; }
+        .btn-action { flex: 1; padding: 12px 5px; font-weight: bold; border: 1px solid #0f0; background: transparent; color: #0f0; cursor: pointer; text-transform: uppercase; border-radius: 4px; }
+        .btn-buy { border-color: #0ff; color: #0ff; }
+        .btn-sell { border-color: #fa0; color: #fa0; }
+        .btn-zero { border-color: #f00; color: #f00; }
+
+        #sidebar { flex: 1.5; background-color: #111; padding: 10px; border-left: 1px solid #0f0; display: flex; flex-direction: column; gap: 8px; min-width: 260px; overflow-y: auto; }
+        
+        /* LAYOUT DE GRADE (GRID) */
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .quadro { border: 1px solid #0f0; padding: 5px; border-radius: 4px; background-color: #050505; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .quadro-titulo { font-size: 0.55em; color: #0a0; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; line-height: 1.1; }
+        .quadro-valor { font-size: 1.1em; font-weight: bold; font-family: 'Consolas', monospace; }
+        
+        .negativo { color: #f00 !important; }
+        .destaque-azul { color: #0ff !important; }
+        .destaque-laranja { color: #fa0 !important; }
+        .painel { border: 1px solid #0f0; padding: 8px; border-radius: 4px; background-color: #050505; }
+        .label-info { font-size: 0.65em; color: #0a0; text-transform: uppercase; }
+        
+        #controles { padding: 10px; background-color: #111; border-top: 2px solid #0f0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; flex-shrink: 0; }
+        input[type=number] { background: #000; color: #0f0; border: 1px solid #0f0; padding: 4px; font-family: 'Consolas', monospace; width: 100%; }
+        
+        @media (max-width: 800px) { #main-container { flex-direction: column; } #sidebar { border-left: none; border-top: 1px solid #0f0; width: auto; } }
+        .auto-row { display: flex; align-items: center; gap: 5px; margin-top: 5px; font-size: 0.8em; }
+        .auto-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
+        .auto-row input[type=number] { width: 50px; height: 20px; text-align: right; padding-right: 2px; }
+
+        /* ESTILO DA CAIXA FLUTUANTE DO HISTÓRICO DE BACKTEST */
+        #containerBacktest { position: fixed; bottom: 85px; right: 15px; z-index: 9999; background: #111; border: 2px solid #fa0; padding: 10px; border-radius: 5px; box-shadow: 0px 0px 15px rgba(255, 170, 0, 0.3); width: 380px; display: none; }
+        #historicoJanela { width: 100%; height: 220px; background: #000; color: #0f0; font-family: 'Consolas', monospace; font-size: 11px; overflow-y: scroll; border: 1px solid #333; padding: 5px; box-sizing: border-box; white-space: pre; }
+        
+        /* ESTILO DO DIAGNÓSTICO */
+        #containerDiagnostico { position: fixed; bottom: 85px; left: 15px; z-index: 9999; background: #f8f9fa; border: 2px solid #ccc; padding: 10px; border-radius: 5px; box-shadow: 2px 2px 10px rgba(0,0,0,0.3); width: 320px; display: none; }
+        #btnReabrirDiagnostico { position: fixed; bottom: 85px; left: 15px; z-index: 9998; background-color: #222; color: #0f0; border: 1px solid #0f0; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-weight: bold;">OSCILOSCÓPIO FINANCEIRO - KLBN11</div>
+    <div id="data-hora-display">AGUARDANDO...</div>
+</header>
+
+<div id="main-container">
+    <div id="chart-area">
+        <div id="chart-container">
+            <div id="plotly-chart" style="width: 100%; height: 100%;"></div>
+        </div>
+        <div id="action-bar">
+            <button class="btn-action btn-buy" onclick="executarTrade('compra')">COMPRAR</button>
+            <button class="btn-action btn-sell" onclick="executarTrade('venda')">VENDER</button>
+            <button class="btn-action btn-zero" onclick="zerarTudo()">ZERAR TUDO</button>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">DIVERGÊNCIA</div><div id="diff-display" class="quadro-valor">0.00%</div></div>
+            <div class="quadro"><div class="quadro-titulo">MULTIPLICADOR</div><div id="v-mult" class="quadro-valor destaque-laranja">1.0000</div></div>
+            <div class="quadro"><div class="quadro-titulo">PREGÕES</div><div id="days-count-display" class="quadro-valor" style="color: #fff;">0</div></div>
+        </div>
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">AÇÕES EM CARTEIRA</div><div id="pos-qty-display" class="quadro-valor destaque-azul">0</div></div>
+            <div class="quadro"><div class="quadro-titulo">PREÇO MÉDIO</div><div id="avg-price-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">LUCRO NO TRADE</div><div id="pnl-real-display" class="quadro-valor">0.00</div></div>
+        </div>
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">LUCRO ACUMULADO</div><div id="total-profit-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">FATOR LUCRO</div><div id="profit-factor-display" class="quadro-valor">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">WIN RATE</div><div id="win-rate-display" class="quadro-valor">0%</div></div>
+        </div>
+
+        <div class="info-grid">
+            <div class="quadro"><div class="quadro-titulo">LUCRO AÇÃO (1 LT)</div><div id="lucro-acao-display" class="quadro-valor" style="color: #fff;">0.00</div></div>
+            <div class="quadro"><div class="quadro-titulo">AÇÕES EQV.CAP.</div><div id="eqv-cap-display" class="quadro-valor destaque-azul">0</div></div>
+            <div class="quadro" style="display: none;"><div class="quadro-titulo">TRADES</div><div id="trade-count-display" class="quadro-valor">0</div></div>
+        </div>
+
+<div class="painel">
+            <h3 style="font-size:0.8rem; margin-top: 1px; margin-bottom: 1px; text-align: center;">COMPRA AUTOMÁTICA</h3>
+            <div class="auto-row">
+                <span id="label-diff" style="flex: 1;">DIVERGENCIA SUZB-KLBN:<</span>
+                <span id="calculated-diff-trigger" style="margin-left: 5px; font-size: 0.8em; color: #aaa;"></span>
+                <input type="number" id="buy-auto-diff" value="-1.0" step="0.1" style="width: 60px; text-align: right;">
+                <span>%</span>
+                <input type="checkbox" id="buy-req-diff" checked> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row">
+                <span id="label-suzb" style="flex: 1;">SUBIDA SUZB ULT.HORA: ></span>
+                <input type="number" id="buy-auto-suzb" value="0.5" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
+                <input type="checkbox" id="buy-req-suzb"> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row" title="Queda máxima de KLBN11 nos últimos 4 dias">
+                <span id="label-fall" style="flex: 1;">QUEDA KLBN EM 4 DIAS: ></span>
+                <input type="number" id="buy-auto-fall" value="3.0" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
+                <input type="checkbox" id="buy-req-fall"> <span style="font-size: 0.7em;">OBRIG</span>
+            </div>
+            <div class="auto-row">
+                <span style="flex: 1;">MULTIPLICADOR DIVERGÊNCIA</span>
+                <input type="number" id="buy-auto-mult" value="1.5" step="0.1" style="width: 60px; text-align: right;">
+            </div>
+        </div>
+
+        <div class="painel">
+            <h3 style="font-size:0.8rem; margin-top: 1px; margin-bottom: 1px; text-align: center;">FECHAMENTO AUTOMÁTICO</h3>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-profit" checked>
+                <span style="flex: 1; style="font-size: 12px;">Lucro >=</span>
+                <input type="number" id="val-auto-profit" value="150.00" step="10.00" style="width: 60px; direction: rtl !important; padding-right: 5px; text-align: right;"> <span>R$</span>
+            </div>
+            <div class="auto-row">
+                <input type="checkbox" id="chk-auto-diff-high" checked>
+                <span style="flex: 1;">PREÇO > 2°ATIVO</span>
+                <input type="number" id="val-auto-diff-high" value="1.00" step="0.1" style="width: 60px; text-align: right;"> <span>%</span>
+            </div>
+        </div>
+
+      <div class="painel" style="display: flex; align-items: center; gap: 10px;">
+            <div style="flex: 1;"><div class="label-info">LOTE OPERAC.</div><input type="number" id="trade-qty" value="900" step="100"></div>
+            <div style="flex: 1;">
+                <div class="label-info">MODO VENDA</div>
+                <select id="sell-mode" style="background: #000; color: #fa0; border: 1px solid #fa0; width: 100%; padding: 4px; font-family: 'Consolas', monospace;">
+                    <option value="lote">1 LOTE</option>
+                    <option value="tudo">TUDO</option>
+                </select>
+            </div>
+            <div id="trade-status" style="flex: 1; font-size: 0.6em; color: #888; text-align: center; border-left: 1px solid #333;">STANDBY</div>
+        </div>
+    </div>
+</div>
+
+<div id="controles">
+    <button onclick="togglePlay()" id="btn-play" style="padding: 10px; background: transparent; border: 1px solid #0f0; color: #0f0; font-weight: bold; min-width: 80px;">INICIAR</button>
+    <button id="btnVerBacktest" onclick="exibirBacktest()" style="padding: 10px; background: transparent; border: 1px solid #fa0; color: #fa0; font-weight: bold; min-width: 100px;">📋 VER BACKTEST</button>
+
+<div style="flex: 1;"><div class="label-info" style="font-size: 12px;">INÍCIO (DD/MM/AA)</div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="hour-input" placeholder="Ex: 25/06/26" style="width: 100px; box-sizing: border-box;">
+            <button onclick="navegarParaData()">OK</button>
+        </div>
+    </div>
+
+    <div style="flex: 1;">
+        <div class="label-info" style="font-size: 12px;">Janela Dias</div>
+        <select id="days-window-select" onchange="atualizarJanela(this.value)">
+            <option value="5">5 Dias</option>
+            <option value="10">10 Dias</option>
+            <option value="20" selected>20 Dias</option>
+        </select>
+    </div>
+    <div style="flex: 1;">
+        <div class="label-info" style="font-size: 12px;">Velocidade (Multiplicador)</div>
+        <div style="display: flex; gap: 5px;">
+            <input type="number" id="speed-input" value="100" min="1" style="width: 60px;">
+            <button onclick="atualizarVelocidadeManual()">OK</button>
+        </div>
+    </div>
+</div>
+
+<div id="containerBacktest">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <span style="font-weight: bold; font-family: sans-serif; font-size: 12px; color: #fa0;">Relatório de Eventos (Backtest)</span>
+        <div>
+            <button onclick="salvarArquivoBacktest()" style="cursor: pointer; padding: 2px 8px; font-size: 11px; background-color: #28a745; color: white; border: none; border-radius: 3px; margin-right: 5px; font-weight: bold;">Salvar Relatório</button>
+            <button onclick="ocultarBacktest()" style="cursor: pointer; padding: 2px 6px; font-size: 11px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-weight: bold;">X</button>
+        </div>
+    </div>
+    <div id="historicoJanela">Aguardando execuções de mercado...</div>
+</div>
+
+<script>
+    // ESTADO GLOBAL
+    let dadosTratados = []; 
+    let blocosHoras = [];   
+    let horaAtualIdx = 0;   
+    let minutoNaHora = 0;   
+    let lucroAcumulado = 0;
+    let playInterval = null;
+    let indiceSegundoDia = 0;
+    let saldoFinanceiro = 0;
+    let primeiroTrade = true;
+    let refDataInicio = null;
+    let refPrecoInicio = null;
+    let lastBuyTime = "";   
+    
+    // VARIÁVEIS DE RETENÇÃO (LATCH) PARA A BANCADA DE DIAGNÓSTICO
+    let ultimoLucroRegistrado = 0.00;
+    let motivoParadaReal = "Pausa do Motor";
+
+    // LOGICA DE CARTEIRA
+    let posicaoTotal = 0;   
+    let precoMedio = 0;     
+    let ganhosBrutos = 0, perdasBrutas = 0, totalTrades = 0, tradesVencedores = 0;
+    
+    // NOVAS VARIÁVEIS OPERACIONAIS PARA O HISTÓRICO
+    let listaSaidasBacktest = []; 
+    let listaEntradasBacktest = []; 
+    let dataHoraInicioSimulacao = "";
+
+    // FUNÇÕES DE CONTROLE VISUAL GERAL
+    function exibirBacktest() {
+        document.getElementById("containerBacktest").style.display = "block";
+        document.getElementById("btnVerBacktest").style.display = "none";
+        renderizarHistoricoTela();
+    }
+
+    function ocultarBacktest() {
+        document.getElementById("containerBacktest").style.display = "none";
+        document.getElementById("btnVerBacktest").style.display = "block";
+    }
+
+    function exibirPainel() {
+        document.getElementById("containerDiagnostico").style.display = "block";
+        document.getElementById("btnReabrirDiagnostico").style.display = "none";
+    }
+
+    function ocultarPainel() {
+        document.getElementById("containerDiagnostico").style.display = "none";
+        if (document.getElementById("painelDiagnostico").value !== "") {
+            document.getElementById("btnReabrirDiagnostico").style.display = "block";
+        }
+    }
+
+function renderizarHistoricoTela() {
+    let janela = document.getElementById("historicoJanela");
+    if (!janela) return;
+
+    let todasOperacoes = [];
+    let entradas = window.listaEntradasBacktest || (typeof listaEntradasBacktest !== 'undefined' ? listaEntradasBacktest : []);
+    let saidas = window.listaSaidasBacktest || (typeof listaSaidasBacktest !== 'undefined' ? listaSaidasBacktest : []);
+
+    let padronizarData = (dStr) => {
+        if (dStr.includes("-")) {
+            let p = dStr.split(/[- \s:]/);
+            if (p.length >= 5) return `${p[2]}/${p[1]}/${p[0]} ${p[3]}:${p[4]}`;
+        }
+        return dStr;
+    };
+
+    entradas.forEach(e => todasOperacoes.push({
+        dataHora: padronizarData(e.dataHora || ""), 
+        tipo: "C", 
+        qtd: e.qtd || 0, 
+        preco: e.preco || 0,
+        resultado: null, 
+        divergencia: typeof e.divergencia === 'number' ? e.divergencia : null, 
+        motivo: e.motivo || "Compra"
+    }));
+
+    saidas.forEach(s => {
+        let precoVal = typeof s.preco === 'number' ? s.preco : parseFloat(s.preco);
+        let lucroVal = typeof s.lucroOp === 'number' ? s.lucroOp : (parseFloat(s.lucroOp) || 0);
+        let divVal = typeof s.divergencia === 'number' ? s.divergencia : parseFloat(s.divergencia);
+        
+        todasOperacoes.push({
+            dataHora: padronizarData(s.dataHora || ""), tipo: "V", qtd: s.qtd || 0, preco: isNaN(precoVal) ? 0 : precoVal,
+            resultado: isNaN(lucroVal) ? 0 : lucroVal, divergencia: isNaN(divVal) ? 0 : divVal, motivo: s.motivo || "Venda"
+        });
+    });
+
+    if (todasOperacoes.length === 0) {
+        janela.innerText = "Aguardando execuções de mercado...";
+        return;
+    }
+
+    todasOperacoes.sort((a, b) => {
+        let formatarOrdem = (dStr) => {
+            let p = dStr.split(/[\/\s:]/);
+            if (p.length >= 5) {
+                let ano = p[2].length === 2 ? "20" + p[2] : p[2];
+                return `${ano}-${p[1]}-${p[0]} ${p[3]}:${p[4]}`;
+            }
+            return dStr;
+        };
+        return formatarOrdem(a.dataHora).localeCompare(formatarOrdem(b.dataHora));
+    });
+
+    // Painel de cabeçalho com a nova coluna LUCRO ACUM. integrada
+    let conteudo = "DATA/HORA        | TIPO |  QTD  | PREÇO  | LUCRO OP.   | LUCRO ACUM. | DIVERG.  | GATILHO\n";
+    conteudo += "----------------------------------------------------------------------------------------\n";
+
+    let acumTotal = 0;
+    todasOperacoes.forEach(op => {
+        if (op.tipo === "V" && op.resultado !== null) {
+            acumTotal += op.resultado;
+        }
+        
+        let txtRes = op.resultado !== null ? `R$ ${op.resultado.toFixed(2).padStart(8, ' ')}` : "--compra---";
+        let txtAcum = op.tipo === "V" ? `R$ ${acumTotal.toFixed(2).padStart(8, ' ')}` : "           "; 
+        let txtDiv = op.divergencia !== null ? `${op.divergencia.toFixed(2).padStart(7, ' ')}%` : "--------";
+        
+        conteudo += `${op.dataHora.padEnd(16, ' ')} |  [${op.tipo}] | ${String(op.qtd).padStart(5, ' ')} | ${op.preco.toFixed(2).padStart(6, ' ')} | ${txtRes} | ${txtAcum} | ${txtDiv} | ${op.motivo}\n`;
+    });
+
+    janela.innerText = conteudo;
+    janela.scrollTop = janela.scrollHeight;
+}
+
+    function calcularDelay(nivel) {
+        return Math.max(10, Math.round(1000 * Math.pow(0.954, nivel - 1) + 5));
+    }
+
+
+    function prepararDados() {
+        const klbnRaw = DADOS_HISTORICOS.klbn;
+        const suzbRaw = DADOS_HISTORICOS.suzb;
+        const mapSuzb = new Map(suzbRaw.map(i => [i[0], i])); 
+        listaSaidasBacktest = []; 
+        
+        dadosTratados = [];
+        blocosHoras = [];
+        saldoFinanceiro = 0;
+        primeiroTrade = true;
+        let diaAtual = null, multDesteDia = 1, ultimaHoraCheia = null;
+
+        for (let i = 0; i < klbnRaw.length; i++) {
+            const dataHora = klbnRaw[i][0], precoKLBN = klbnRaw[i][1];
+            const itemSUZB = mapSuzb.get(dataHora);
+            if (itemSUZB === undefined) continue;
+            const precoSUZB = itemSUZB[1];
+
+            const [dataPura, horaFull] = dataHora.split(' ');
+            const horaCheia = horaFull.split(':')[0];
+
+            if (dataPura !== diaAtual) {
+                if (dadosTratados.length > 0) {
+                    const ultimo = dadosTratados[dadosTratados.length - 1];
+                    multDesteDia = ultimo.klbn / ultimo.suzb_real;
+                    if (indiceSegundoDia === 0) indiceSegundoDia = blocosHoras.length; 
+                } else { multDesteDia = precoKLBN / precoSUZB; }
+                diaAtual = dataPura;
+
+                if (klbnRaw[i].length === 3) {
+                    const precoAberturaK = klbnRaw[i][2];
+                    const precoAberturaS = itemSUZB.length === 3 ? itemSUZB[2] : itemSUZB[1];
+                    
+                    dadosTratados.push({
+                        time: dataPura + " 09:59:00",
+                        dataPura: dataPura,
+                        klbn: precoAberturaK,
+                        suzb_real: precoAberturaS,
+                        suzb_adj: precoAberturaS * multDesteDia,
+                        diff: ((precoAberturaK / (precoAberturaS * multDesteDia)) - 1) * 100,
+                        mult: multDesteDia,
+                        is_abertura: true
+                    });
+                    
+                    blocosHoras.push({ globalIdx: dadosTratados.length - 1, data: dataPura, label: "Abertura" });
+                    ultimaHoraCheia = "abertura";
+                }
+            }
+
+            if (horaCheia !== ultimaHoraCheia) {
+                blocosHoras.push({ globalIdx: dadosTratados.length, data: dataPura });
+                ultimaHoraCheia = horaCheia;
+            }
+
+            dadosTratados.push({ 
+                time: dataHora, dataPura: dataPura, klbn: precoKLBN, 
+                suzb_real: precoSUZB, suzb_adj: precoSUZB * multDesteDia, 
+                diff: ((precoKLBN / (precoSUZB * multDesteDia)) - 1) * 100, 
+                mult: multDesteDia 
+            });
+        }
+
+        horaAtualIdx = Math.min(indiceSegundoDia, blocosHoras.length - 1); 
+        
+        document.getElementById('days-count-display').innerText = '0';
+        document.getElementById('lucro-acao-display').innerText = '0.00';
+        
+        //atualizarLabelVelocidade(document.getElementById('speed-input').value);
+        atualizarGrafico();
+    }
+
+function togglePlay() {
+    if (playInterval) { 
+        motivoParadaReal = "Pausa do Motor";
+        pararMotor(); 
+        document.getElementById('btn-play').innerText = "INICIAR"; 
+    } else { 
+        if (listaSaidasBacktest.length === 0 || refDataInicio === null) {
+            const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+            dataHoraInicioSimulacao = atual.time.replace(/[: ]/g, "_");
+        }
+        document.getElementById('btn-play').innerText = "PAUSAR"; 
+        
+        ultimoLucroRegistrado = 0.00; 
+
+        if (refDataInicio === null) {
+            const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+            refDataInicio = new Date(atual.dataPura);
+            refPrecoInicio = atual.klbn;
+        }
+        iniciarMotor(); 
+    }
+}
+
+    function iniciarMotor() {
+        const motor = () => {
+            minutoNaHora++;
+            let proxIdx = (horaAtualIdx + 1 < blocosHoras.length) ? blocosHoras[horaAtualIdx + 1].globalIdx : dadosTratados.length;
+            if ((blocosHoras[horaAtualIdx].globalIdx + minutoNaHora) >= proxIdx) {
+                minutoNaHora = 0; horaAtualIdx++;
+                if (horaAtualIdx >= blocosHoras.length) { motivoParadaReal = "Fim dos Dados"; pararMotor(); document.getElementById('btn-play').innerText = "INICIAR"; return; }
+            }
+            atualizarGrafico();
+        };
+        const vel = parseInt(document.getElementById('speed-input').value) || 100;
+        playInterval = setInterval(motor, calcularDelay(vel));
+    }
+
+    function atualizarJanela(dias) {
+        atualizarGrafico();
+    }
+
+function navegarParaData() {
+    let input = document.getElementById('hour-input').value;
+    if (!input) return;
+    
+    input = input.trim(); 
+    const partes = input.split('/');
+    if (partes.length !== 3) { alert("Formato inválido. Use DD/MM/AA ou DD/MM/AAAA"); return; }
+    
+    let dia = partes[0].trim().padStart(2, '0');
+    let mes = partes[1].trim().padStart(2, '0');
+    let ano = partes[2].trim();
+    
+    // Ajusta o ano se foi digitado com 2 dígitos (ex: 26 vira 2026)
+    if (ano.length === 2) {
+        ano = '20' + ano;
+    }
+    
+    const dataBusca = `${ano}-${mes}-${dia}`;
+    const idx = blocosHoras.findIndex(b => b.data === dataBusca);
+    
+    if (idx !== -1) {
+        motivoParadaReal = "Navegação Manual"; 
+        pararMotor(); 
+        document.getElementById('btn-play').innerText = "INICIAR";
+        horaAtualIdx = idx; 
+        minutoNaHora = 0; 
+        atualizarGrafico();
+    } else {
+        alert("Data não encontrada na base de dados. Verifique o período do histórico.");
+    }
+}
+
+    function atualizarVelocidadeManual() {
+        const v = parseInt(document.getElementById('speed-input').value);
+        if (isNaN(v) || v < 1) { alert("Velocidade inválida."); return; }
+        atualizarLabelVelocidade(v);
+    }
+
+function pararMotor() {
+    if (playInterval) clearInterval(playInterval); 
+    playInterval = null; 
+}
+
+    function apurarResultado(val, motivoVenda = "Venda Manual", divVal = 0) {
+        if (isNaN(val) || val === undefined) return;
+
+        lucroAcumulado += val; 
+        totalTrades++;
+        
+        if (val > 0) { 
+            ganhosBrutos += val; 
+            tradesVencedores++; 
+        } else if (val < 0) { 
+            perdasBrutas += Math.abs(val); 
+        }
+
+        let dataHoraTela = document.getElementById('data-hora-display')?.innerText || "00/00/00 00:00";
+        let precoTela = parseFloat(document.getElementById('avg-price-display')?.innerText) || 0;
+        let divTela = parseFloat(document.getElementById('diff-display')?.innerText) || divVal;
+
+        registrarSaidaNoHistorico(dataHoraTela, parseInt(document.getElementById('trade-qty').value) || 900, precoTela, val, motivoVenda, divTela);
+    }
+
+function executarTrade(tipo, motivo = "") {
+    const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+    let qty = parseInt(document.getElementById('trade-qty').value) || 900;
+    const precoAtual = atual.klbn;
+    const dataHoraAtual = atual.time || "00/00/00 00:00";
+    
+    // INTERCEPTADOR DE FLUXO: Decide o volume da descarga na venda
+    if (tipo === 'venda') {
+        const modoVenda = document.getElementById('sell-mode')?.value || "lote";
+        if (modoVenda === "tudo" && posicaoTotal > 0) {
+            qty = posicaoTotal; // Abertura total da válvula
+        }
+    }
+    
+    if (tipo === 'compra') {
+        let divTela = parseFloat(document.getElementById('diff-display')?.innerText) || 0;
+        registrarEntradaNoHistorico(dataHoraAtual, qty, precoAtual, motivo || "------------", divTela);
+        lastBuyTime = atual.time; 
+    }
+    
+    if (primeiroTrade) {
+        primeiroTrade = false;
+    } else {
+        saldoFinanceiro += (tipo === 'venda' ? 1 : -1) * qty * precoAtual;
+    }
+
+    if (tipo === 'compra') { 
+        listaEntradasBacktest.push({
+            dataHora: atual.time || "00/00 00:00",
+            qtd: qty,
+            preco: precoAtual,
+            motivo: motivo || "------------"
+        });
+        if (posicaoTotal >= 0) { 
+            precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); 
+            posicaoTotal += qty; 
+        } else { 
+            const qtyReduzir = Math.min(qty, Math.abs(posicaoTotal));
+            const res = (precoMedio - precoAtual) * qtyReduzir;
+            
+            posicaoTotal += qtyReduzir;
+            if (qty > qtyReduzir) { 
+                posicaoTotal = (qty - qtyReduzir); 
+                precoMedio = precoAtual; 
+            } else if (posicaoTotal === 0) {
+                precoMedio = 0;
+            }
+            
+            apurarResultado(res, motivo || "Compra Cobertura", atual.diff);
+        }
+    } else { 
+        if (posicaoTotal <= 0) { 
+            precoMedio = ((Math.abs(posicaoTotal) * precoMedio) + (qty * precoAtual)) / (Math.abs(posicaoTotal) + qty); 
+            posicaoTotal -= qty; 
+        } else { 
+            const qtyReduzir = Math.min(qty, posicaoTotal);
+            const res = (precoAtual - precoMedio) * qtyReduzir;
+            
+            posicaoTotal -= qtyReduzir;
+            if (qty > qtyReduzir) { 
+                posicaoTotal = -(qty - qtyReduzir); 
+                precoMedio = precoAtual; 
+            } else if (posicaoTotal === 0) {
+                precoMedio = 0;
+            }
+            
+            apurarResultado(res, motivo || "Venda Manual", atual.diff);
+        }
+    }
+
+    let statusMsg = `TRADE EXECUTADO: ${tipo.toUpperCase()} @ ${precoAtual.toFixed(2)}.`;
+    if (tipo === 'compra') {
+        statusMsg += ` DIV: ${atual.diff.toFixed(2)}%`;
+    } else {
+        statusMsg += ` MOTIVO: ${motivo || "MANUAL"}`;
+    }
+    document.getElementById('trade-status').innerText = statusMsg + " AGUARDANDO...";
+    atualizarGrafico();
+}
+
+    function salvarArquivoBacktest() {
+        let janela = document.getElementById("historicoJanela");
+        if (!janela || janela.innerText === "Aguardando execuções de mercado...") {
+            alert("Não há registros de operações para salvar.");
+            return;
+        }
+
+        let conteudo = janela.innerText;
+        let html = `<html><head><meta charset="utf-8"><title>Relatório de Eventos KLBN11</title></head>
+        <body style="background-color: #000; color: #0f0; white-space: pre-wrap; font-family: monospace;">
+            ${conteudo}
+        </body></html>`;
+
+        const agora = new Date();
+        const timestamp = `${String(agora.getDate()).padStart(2,'0')}-${String(agora.getMonth()+1).padStart(2,'0')}_${String(agora.getHours()).padStart(2,'0')}-${String(agora.getMinutes()).padStart(2,'0')}`;
+        
+        let blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Relatorio Eventos KLBN11 ${timestamp}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function atualizarGrafico() {
+        if (dadosTratados.length === 0) return;
+        
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+        
+        const lookback = 28;
+        let maxH = atual.klbn;
+        for (let i = 1; i <= lookback; i++) {
+            const hIdx = horaAtualIdx - i;
+            if (hIdx < 0) break;
+            const htmlData = dadosTratados[blocosHoras[hIdx].globalIdx];
+            if (htmlData.klbn > maxH) maxH = htmlData.klbn;
+        }
+        const condFall = ((maxH - atual.klbn) / maxH) * 100 >= parseFloat(document.getElementById('buy-auto-fall').value);
+
+        const baseDiff = parseFloat(document.getElementById('buy-auto-diff').value);
+        const multLote = parseFloat(document.getElementById('buy-auto-mult').value);
+        const lotePadrao = parseInt(document.getElementById('trade-qty').value) || 1000;
+        const numLotes = Math.max(0, posicaoTotal / lotePadrao);
+        const diffAlvo = baseDiff * Math.pow(multLote, numLotes);
+        const condDiff = atual.diff <= diffAlvo;
+
+        let condSuzb = false;
+        if (horaAtualIdx > 0) {
+            const suzbPrev = dadosTratados[blocosHoras[horaAtualIdx-1].globalIdx].suzb_real;
+            condSuzb = ((atual.suzb_real - suzbPrev) / suzbPrev) * 100 >= parseFloat(document.getElementById('buy-auto-suzb').value);
+        }
+
+        document.getElementById('calculated-diff-trigger').innerText = `(Gatilho: ${diffAlvo.toFixed(2)}%)`;
+
+        let diasDesejados = parseInt(document.getElementById('days-window-select').value) || 20;
+        let datasContadas = new Set();
+        let inicio = horaAtualIdx;
+
+        while (inicio > 0 && datasContadas.size < diasDesejados) {
+            datasContadas.add(blocosHoras[inicio].data);
+            if (datasContadas.size < diasDesejados || datasContadas.has(blocosHoras[inicio - 1]?.data)) {
+                inicio--;
+            } else {
+                break;
+            }
+        }
+        inicio = Math.max(0, inicio, indiceSegundoDia - 1);
+
+        let xArr = [], yK = [], yS = [], tArr = [];
+        let divisoresDia = [];
+        let ticksHorizontais = [];
+
+        for (let h = inicio; h <= horaAtualIdx; h++) {
+            const iStart = blocosHoras[h].globalIdx, iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1].globalIdx : dadosTratados.length;
+            const iFin = iStart + (h === horaAtualIdx ? minutoNaHora : (iNext - iStart - 1));
+            if (iFin >= dadosTratados.length) continue;
+            
+            xArr.push(h); 
+            yK.push(dadosTratados[iFin].klbn); 
+            yS.push(dadosTratados[iFin].suzb_adj); 
+            const itemFin = dadosTratados[iFin];
+            const labelHora = itemFin.is_abertura ? "09:59" : itemFin.time.split(' ')[1].substring(0, 5);
+            tArr.push(labelHora);
+
+            if (h < horaAtualIdx && h + 1 < blocosHoras.length && blocosHoras[h].data !== blocosHoras[h+1].data) {
+                divisoresDia.push({ type: 'line', xref: 'x', yref: 'paper', x0: h + 0.2, x1: h + 0.2, y0: 0, y1: 1, line: { color: '#444', width: 2, dash: 'dashdot' } });
+            }
+            if (iStart === blocosHoras[h].globalIdx && (h === 0 || blocosHoras[h].data !== blocosHoras[h-1].data)) {
+                 const partesData = blocosHoras[h].data.split('-');
+                 ticksHorizontais.push({ val: h, label: `${partesData[2]}/${partesData[1]}` });
+            }
+        }
+
+        Plotly.react('plotly-chart', [
+            { 
+                x: xArr, 
+                y: yK, 
+                text: tArr,
+                mode: 'lines+markers', 
+                name: 'KLBN11', 
+                line: {color: '#0ff', width: 3}, 
+                marker: {size: 5},
+                hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
+            },
+            { 
+                x: xArr, 
+                y: yS, 
+                text: tArr,
+                mode: 'lines+markers', 
+                name: 'SUZB3 (Adj)', 
+                line: {color: '#fa0', width: 1.5}, 
+                marker: {size: 3},
+                hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
+            }
+        ], {
+            paper_bgcolor: '#000', plot_bgcolor: '#000', margin: { t: 30, r: 10, b: 30, l: 40 },
+            showlegend: true, legend: { font: { color: '#0f0', size: 10 }, orientation: 'h', y: 1.15 },
+            xaxis: { 
+                color: '#0f0', 
+                gridcolor: '#030', 
+                range: [inicio, inicio + ((parseInt(document.getElementById('days-window-select').value) || 20) * 8)],
+                tickmode: 'array', 
+                tickvals: ticksHorizontais.map(t => t.val), 
+                ticktext: ticksHorizontais.map(t => t.label) 
+            },
+            yaxis: { color: '#0f0', gridcolor: '#030', autorange: true, hoverformat: '.2f' },
+            shapes: divisoresDia
+        });
+
+        const [dataPura, horaFull] = atual.time.split(' ');
+        const [ano, mes, dia] = dataPura.split('-');
+        document.getElementById('data-hora-display').innerText = `${dia}/${mes}/${ano} ${horaFull.substring(0, 5)}`;
+        
+        if (playInterval && refDataInicio) {
+            document.getElementById('days-count-display').innerText = Math.floor((new Date(atual.dataPura) - refDataInicio) / 86400000) + 1;
+        }
+
+        document.getElementById('diff-display').innerText = atual.diff.toFixed(2) + '%';
+        document.getElementById('diff-display').className = 'quadro-valor ' + (atual.diff < 0 ? 'negativo' : '');
+        document.getElementById('v-mult').innerText = atual.mult.toFixed(4);
+        document.getElementById('pos-qty-display').innerText = posicaoTotal;
+        document.getElementById('pos-qty-display').className = 'quadro-valor ' + (posicaoTotal < 0 ? 'negativo' : 'destaque-azul');
+        document.getElementById('avg-price-display').innerText = precoMedio.toFixed(2);
+
+        let lucroAberto = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (posicaoTotal < 0 ? (precoMedio - atual.klbn) * Math.abs(posicaoTotal) : 0);
+        if (posicaoTotal !== 0) {
+            ultimoLucroRegistrado = lucroAberto; 
+        }
+
+        const openProfitEl = document.getElementById('pnl-real-display');
+        if (openProfitEl) {
+            let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
+                                (motivoParadaReal === "ALVO RENDIMENTO R$" ? ultimoLucroRegistrado : 0.00);
+            openProfitEl.innerText = lucroExibicao.toFixed(2);
+            openProfitEl.className = 'quadro-valor ' + (lucroExibicao < 0 ? 'negativo' : '');
+        }
+
+        document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
+        document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
+        
+        let pf = perdasBrutas === 0 ? (ganhosBrutos > 0 ? ganhosBrutos : 0.00) : (ganhosBrutos / perdasBrutas);
+        document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
+        document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
+        
+        document.getElementById('trade-count-display').innerText = totalTrades;
+        
+        const wr = totalTrades === 0 ? 0 : (tradesVencedores / totalTrades * 100);
+        document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
+        document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
+
+        if (playInterval && refPrecoInicio) {
+            const lucroAcao = (atual.klbn - refPrecoInicio) * 1000;
+            const lucroAcaoEl = document.getElementById('lucro-acao-display');
+            if (lucroAcaoEl) {
+                lucroAcaoEl.innerText = lucroAcao.toFixed(2);
+                lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
+            }
+        }
+
+        const eqvCap = posicaoTotal + (saldoFinanceiro / atual.klbn);
+        document.getElementById('eqv-cap-display').innerText = Math.round(eqvCap);
+
+ if (playInterval) {
+            let mandatoryConditions = [];
+            if (document.getElementById('buy-req-fall').checked) mandatoryConditions.push(condFall);
+            if (document.getElementById('buy-req-diff').checked) mandatoryConditions.push(condDiff);
+            if (document.getElementById('buy-req-suzb').checked) mandatoryConditions.push(condSuzb);
+
+            const allMandatoryTrue = mandatoryConditions.every(c => c === true);
+            const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
+
+            if (allMandatoryTrue && anyConditionTrue) {
+                motivoParadaReal = "Compra Automática";
+                executarTrade('compra');
+                return; 
+            } else {
+                document.getElementById('trade-status').innerText = `AUTO EM ESPERA...`;
+            }
+        }
+
+        if (posicaoTotal !== 0) {
+            const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
+            const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
+            let trigger = false, mot = "";
+            
+            if (chkProfit && lucroAberto >= valProfit) { trigger = true; mot = "ALVO RENDIMENTO R$"; }
+            else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "ALVO DIV ALTA %"; }
+            
+            if (trigger) { 
+                motivoParadaReal = mot;
+                executarTrade('venda', mot); 
+                return;
+            }
+        }
+
+        try {
+            let divPanel = atual.diff;
+            let campoInputCompra = document.getElementById('buy-auto-diff');
+            let campoInputVendaPercentual = document.getElementById('val-auto-diff-high'); 
+            let campoInputVendaLucro = document.getElementById('val-auto-profit'); 
+
+            let gatilhoVendaBase = campoInputVendaPercentual ? parseFloat(campoInputVendaPercentual.value) || 0 : 0;
+            let gatilhoLucroAlvo = campoInputVendaLucro ? parseFloat(campoInputVendaLucro.value) || 0 : 0;
+
+            if (campoInputCompra) {
+                if (condDiff || motivoParadaReal === "Compra Automática") {
+                    campoInputCompra.style.setProperty('background-color', '#ff0000', 'important');
+                    campoInputCompra.style.setProperty('color', '#ffffff', 'important');
+                    campoInputCompra.style.fontWeight = "bold";
+                } else {
+                    campoInputCompra.style.setProperty('background-color', '#000000', 'important');
+                    campoInputCompra.style.setProperty('color', '#00ff00', 'important');
+                    campoInputCompra.style.fontWeight = "normal";
+                }
+            }
+
+            if (campoInputVendaPercentual) {
+                if (divPanel >= gatilhoVendaBase) {
+                    campoInputVendaPercentual.style.setProperty('background-color', '#ff0000', 'important');
+                    campoInputVendaPercentual.style.setProperty('color', '#ffffff', 'important');
+                    campoInputVendaPercentual.style.fontWeight = "bold";
+                } else {
+                    campoInputVendaPercentual.style.setProperty('background-color', '#000000', 'important');
+                    campoInputVendaPercentual.style.setProperty('color', '#00ff00', 'important');
+                    campoInputVendaPercentual.style.fontWeight = "normal";
+                }
+            }
+
+            if (campoInputVendaLucro) {
+                let lucroParaAvaliar = (posicaoTotal !== 0) ? lucroAberto : ultimoLucroRegistrado;
+                if (lucroParaAvaliar >= gatilhoLucroAlvo && (posicaoTotal !== 0 || motivoParadaReal === "ALVO RENDIMENTO R$")) {
+                    campoInputVendaLucro.style.setProperty('background-color', '#ff0000', 'important');
+                    campoInputVendaLucro.style.setProperty('color', '#ffffff', 'important');
+                    campoInputVendaLucro.style.fontWeight = "bold";
+                } else {
+                    campoInputVendaLucro.style.setProperty('background-color', '#000000', 'important');
+                    campoInputVendaLucro.style.setProperty('color', '#00ff00', 'important');
+                    campoInputVendaLucro.style.fontWeight = "normal";
+                }
+            }
+        } catch (e) {
+            console.log("Erro no grampo visual nativo:", e.message);
+        }
+    }
+
+    function zerarTudo() {
+        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+        if (posicaoTotal !== 0) {
+            saldoFinanceiro += posicaoTotal * atual.klbn;
+            let resFinal = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (precoMedio - atual.klbn) * Math.abs(posicaoTotal);
+            ultimoLucroRegistrado = resFinal;
+            motivoParadaReal = "Zeragem Manual";
+            apurarResultado(resFinal, "Zeragem Manual", atual.diff);
+            document.getElementById('trade-status').innerText = "ZERADO";
+        }
+        posicaoTotal = 0; precoMedio = 0; ultimoLucroRegistrado = 0.00; pararMotor(); atualizarGrafico();
+    }
+    
+    function copiarDiagnostico() {
+        let textarea = document.getElementById("painelDiagnostico");
+        if (textarea && textarea.value) {
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value);
+            let btn = document.querySelector("#containerDiagnostico button");
+            let txtOriginal = btn.innerText;
+            btn.innerText = "Copiado!";
+            btn.style.backgroundColor = "#28a745";
+            setTimeout(() => { btn.innerText = txtOriginal; btn.style.backgroundColor = "#007bff"; }, 2000);
+        }
+    }
+
+    function gerarSnapshotDiagnostico(motivo, diffAlvoForced = null) {
+        if (typeof dadosTratados === 'undefined' || dadosTratados.length === 0 || typeof horaAtualIdx === 'undefined') return;
+        
+        try {
+            const idxGlobal = blocosHoras[horaAtualIdx].globalIdx + minutoNaHora;
+            const atual = dadosTratados[idxGlobal];
+            if (!atual) return;
+
+            let divCurrent = atual.diff;
+            let baseDiff = parseFloat(document.getElementById('buy-auto-diff')?.value) || 0;
+            let multLote = parseFloat(document.getElementById('buy-auto-mult')?.value) || 1;
+            let lotePadrao = parseInt(document.getElementById('trade-qty')?.value) || 900;
+            let numLotes = Math.max(0, posicaoTotal / lotePadrao);
+            let gatilhoMult = (diffAlvoForced !== null) ? diffAlvoForced : (baseDiff * Math.pow(multLote, numLotes));
+            
+            let gatilhoVendaPercentual = parseFloat(document.getElementById('val-auto-diff-high')?.value) || 0;
+            let gatilhoFinAlvo = parseFloat(document.getElementById('val-auto-profit')?.value) || 0;
+
+            let alertaVisualCompraAtivo = divCurrent <= gatilhoMult; 
+            
+            let relatorio = `=== SNAPSHOT DE DIAGNÓSTICO ===\n`;
+            relatorio += `Motivo: ${motivo}\n`;
+            relatorio += `Hora Histórico: ${atual.time}\n`;
+            relatorio += `Preço KLBN11: R$ ${atual.klbn.toFixed(2)}\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `Divergência Atual (A): ${divCurrent.toFixed(2)}%\n`;
+            relatorio += `Gatilho Base Default : ${baseDiff.toFixed(2)}%\n`;
+            relatorio += `Gatilho Real (Mult)  : ${gatilhoMult.toFixed(2)}%\n`;
+            relatorio += `Gatilho Venda %      : ${gatilhoVendaPercentual.toFixed(2)}%\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `MONITOR FINANCEIRO EM REAIS\n`;
+            relatorio += `Lucro da Operação    : R$ ${ultimoLucroRegistrado.toFixed(2)}\n`;
+            relatorio += `Gatilho Alvo Venda   : R$ ${gatilhoFinAlvo.toFixed(2)}\n`;
+            relatorio += `--------------------------------\n`;
+            relatorio += `Painel Sidebar (<=)  : ${alertaVisualCompraAtivo ? "VERMELHO (ALERTA BASE)" : "PADRÃO"}\n`;
+            relatorio += `Disparo Robô         : ENVIADO E EXECUTADO\n`;
+            relatorio += `Ações em Carteira    : ${posicaoTotal} \n`;
+            relatorio += `================================`;
+            
+            let painel = document.getElementById("painelDiagnostico");
+            if (painel) { painel.value = relatorio; }
+            exibirPainel();
+            
+        } catch (err) {
+            console.log("Erro no diagnóstico visual: ", err.message);
+        }
+    }
+
+    function registrarSaidaNoHistorico(dataHora, qtd, preco, lucroOp, motivo, divVal) {
+        console.log("=== [MANÔMETRO 2] registrarSaidaNoHistorico RECEBEU OS DADOS ===");
+        
+        let divProtegida = (typeof divVal === 'number') ? divVal : 0;
+        let lucroProtegido = (typeof lucroOp === 'number') ? lucroOp : 0;
+        let precoProtegido = (typeof preco === 'number') ? preco : 0;
+
+        listaSaidasBacktest.push({
+            dataHora: dataHora,
+            qtd: qtd,
+            preco: precoProtegido,
+            lucroOp: lucroProtegido,
+            motivo: motivo || "Venda",
+            divergencia: divProtegida
+        });
+
+        if (document.getElementById("containerBacktest")) {
+            renderizarHistoricoTela();
+        } else {
+            console.log("❌ [ERRO VISUAL] O elemento HTML 'containerBacktest' NÃO existe na página!");
+        }
+    }
+
+    function registrarEntradaNoHistorico(dataHora, qtd, preco, motivo, divergencia) {
+        if (!window.listaEntradasBacktest) {
+            window.listaEntradasBacktest = [];
+        }
+        window.listaEntradasBacktest.push({
+            dataHora: dataHora,
+            qtd: qtd,
+            preco: preco,
+            motivo: motivo || "------------",
+            divergencia: divergencia || 0
+        });
+        
+        if (typeof renderizarHistoricoTela === 'function') {
+            renderizarHistoricoTela();
+        }
+    }
+
+    window.onload = prepararDados;
+</script>
+
+</body>
+</html>
