@@ -63,16 +63,17 @@
 <div id="main-container">
     <div id="chart-area">
         <div id="chart-container">
-            <div id="plotly-chart" style="width: 100%; height: 100%;"></div>
+            <div id="plotly-chart" style="width: 90%; height: 100%;"></div>
         </div>
      </div>
 
     <div id="sidebar">
 
         <div id="action-bar">
+            <button onclick="togglePlay()" id="btn-play" style="padding: 12px; background: transparent; border: 1px solid #0f0; color: #0f0; font-weight: bold; min-width: 80px;">INICIAR</button>
             <button class="btn-action btn-buy" onclick="executarTrade('compra')">COMPRAR</button>
             <button class="btn-action btn-sell" onclick="executarTrade('venda')">VENDER</button>
-            <button class="btn-action btn-zero" onclick="zerarTudo()">ZERAR TUDO</button>
+            <button class="btn-action btn-zero" onclick="zerarTudo()">FECHAR</button>
         </div>
 
         <div class="info-grid">
@@ -139,7 +140,7 @@
 <div id="modal-eqv" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999;">
     <div style="background:#0a0a0a; border: 2px solid rgb(126, 126, 126); margin: 5% auto; padding: 20px; width: 85%; max-width: 900px; border-radius: 8px;">
         <span onclick="fecharGavetaDiaria()" style="color: rgb(126, 126, 126); float:right; font-size:32px; cursor:pointer; font-weight:bold;">&times;</span>
-        <h3 style="color: rgb(126, 126, 126); text-align:center; margin-top: 0;">Evolução Patrimonial Diária (Ações Eqv.)</h3>
+        <h3 style="color: rgb(126, 126, 126); text-align:center; margin-top: 0;">Equivalencia do Patrimônio em Ações</h3>
         <div id="grafico-modal-eqv" style="height: 450px; width: 100%;"></div>
     </div>
 </div>
@@ -159,14 +160,17 @@
 </div>
 
 <div id="controles">
-    <button onclick="togglePlay()" id="btn-play" style="padding: 10px; background: transparent; border: 1px solid #0f0; color: #0f0; font-weight: bold; min-width: 80px;">INICIAR</button>
-    <button id="btnVerBacktest" onclick="abrirGavetaDiaria()" style="padding: 10px; background: transparent; border: 1px solid #fa0; color: #fa0; font-weight: bold; min-width: 100px;">📋 Gráfico Eq.Ações</button>
+    <div style="flex: 1;">
+        <button id="btnVerBacktest" onclick="abrirGavetaDiaria()" style="padding: 10px; background: transparent; border: 1px solid #fa0; color: #fa0; font-weight: bold; min-width: 100px;">📋 Gráfico Eq.Ações</button>
+    </div>
 
-<div style="flex: 1;"><div class="label-info" style="font-size: 12px;">DATA INICIAL</div>
+    <div style="flex: 1;">
+        <div class="label-info" style="font-size: 12px;">DATA INICIAL</div>
         <div style="display: flex; gap: 5px;">
             <input type="text" id="hour-input" placeholder="  DD/MM/AA  " style="width: 100px; box-sizing: border-box;">
             <button onclick="navegarParaData()">OK</button>
         </div>
+
     </div>
     <div style="flex: 1;">
         <div class="label-info" style="font-size: 12px;">Janela Dias</div>
@@ -180,7 +184,7 @@
     <div style="flex: 1;">
         <div class="label-info" style="font-size: 12px;">Velocidade (Multiplicador)</div>
         <div style="display: flex; gap: 5px;">
-            <input type="number" id="speed-input" value="100" min="1" style="width: 60px;">
+            <input type="number" id="speed-input" value="100" min="1" style="width: 60px;" text-align: center>
             <button onclick="atualizarVelocidadeManual()">OK</button>
         </div>
     </div>
@@ -522,7 +526,7 @@ function executarTrade(tipo, motivo = "") {
     
     if (tipo === 'compra') {
         let divTela = parseFloat(document.getElementById('diff-display')?.innerText) || 0;
-        registrarEntradaNoHistorico(dataHoraAtual, qty, precoAtual, motivo || "------------", divTela);
+        registrarEntradaNoHistorico(dataHoraAtual, qty, precoAtual, motivo || "--------", divTela);
         lastBuyTime = atual.time; 
     }
     
@@ -537,7 +541,7 @@ function executarTrade(tipo, motivo = "") {
             dataHora: atual.time || "00/00 00:00",
             qtd: qty,
             preco: precoAtual,
-            motivo: motivo || "------------"
+            motivo: motivo || "--------"
         });
         if (posicaoTotal >= 0) { 
             precoMedio = ((posicaoTotal * precoMedio) + (qty * precoAtual)) / (posicaoTotal + qty); 
@@ -739,7 +743,7 @@ function executarTrade(tipo, motivo = "") {
         const openProfitEl = document.getElementById('pnl-real-display');
         if (openProfitEl) {
             let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
-                                (motivoParadaReal === "ALVO RENDIMENTO R$" ? ultimoLucroRegistrado : 0.00);
+                                (motivoParadaReal === "LUCRO R$" ? ultimoLucroRegistrado : 0.00);
             openProfitEl.innerText = lucroExibicao.toFixed(2);
             openProfitEl.className = 'quadro-valor ' + (lucroExibicao < 0 ? 'negativo' : '');
         }
@@ -810,8 +814,8 @@ if (playInterval) {
             const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
             let trigger = false, mot = "";
             
-            if (chkProfit && lucroAberto >= valProfit) { trigger = true; mot = "ALVO RENDIMENTO R$"; }
-            else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "ALVO DIV ALTA %"; }
+            if (chkProfit && lucroAberto >= valProfit) { trigger = true; mot = "LUCRO R$"; }
+            else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "DIVERG.%"; }
             
             if (trigger) { 
                 motivoParadaReal = mot;
@@ -975,7 +979,7 @@ if (playInterval) {
             dataHora: dataHora,
             qtd: qtd,
             preco: preco,
-            motivo: motivo || "------------",
+            motivo: motivo || "--------",
             divergencia: divergencia || 0
         });
         
