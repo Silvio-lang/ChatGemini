@@ -777,34 +777,22 @@ const eqvCap = (posicaoTotal === 0 && saldoFinanceiro === 0) ? tamanhoLote : (po
 // Extrai apenas a data pura (ex: "2024-03-15") do registro atual
 const dataHoje = atual.time.split(' ')[0]; 
 
-// A CHAVE AQUI: O gravador só é acionado se o motor do Backtest estiver rodando
 if (playInterval) {
-    const pRef = refPrecoInicio || atual.klbn || 1;
-    const capRef = tamanhoLote * pRef;
-    const eqvPct = ((eqvCap - tamanhoLote) / tamanhoLote) * 100;
-    const lucroPct = (lucroAcumulado / capRef) * 100;
-
-    // Procura se já existe um registro para o dia de hoje
     let registroDia = historicoDiarioEQV.find(reg => reg.data === dataHoje);
 
     if (registroDia) {
-        // Se o dia já existe, apenas atualiza o valor
         registroDia.valor = Math.round(eqvCap);
-        registroDia.lucro = lucroAcumulado;
-        registroDia.eqvPct = eqvPct;
-        registroDia.lucroPct = lucroPct;
+        registroDia.lucro = lucroAcumulado; 
+        registroDia.preco = atual.klbn; // Guarda o preço atual para recalibração
     } else {
-        // Se o dia virou, cria uma anotação nova na fita
         historicoDiarioEQV.push({ 
             data: dataHoje, 
-            valor: Math.round(eqvCap),
+            valor: Math.round(eqvCap), 
             lucro: lucroAcumulado,
-            eqvPct: eqvPct,
-            lucroPct: lucroPct
+            preco: atual.klbn // Registra o preço de partida do novo dia
         });
     }
 }
-
  if (playInterval) {
             let mandatoryConditions = [];
             if (document.getElementById('buy-req-fall').checked) mandatoryConditions.push(condFall);
@@ -1006,33 +994,41 @@ let historicoDiarioEQV = [];
 
 function abrirGavetaDiaria() {
     document.getElementById('modal-eqv').style.display = 'block';
+    if (historicoDiarioEQV.length === 0) return;
+
+const tamanhoLote = parseInt(document.getElementById('trade-qty').value) || 900;
     
+    // Correção do isolamento: o nome da constante agora está unificado e sem espaços
+    const precoInicialDoTeste = historicoDiarioEQV[0].preco || atual.klbn;
+    const capInicialFinanceiro = tamanhoLote * precoInicialDoTeste; 
+
     let eixoX = historicoDiarioEQV.map(reg => reg.data);
-    let eixoY_EQV = historicoDiarioEQV.map(reg => reg.eqvPct || 0);
-    let eixoY_Lucro = historicoDiarioEQV.map(reg => reg.lucroPct || 0);
+    
+    // Ambas as curvas respondem à mesma lógica percentual
+    let eixoEQVPerc = historicoDiarioEQV.map(reg => ((reg.valor - tamanhoLote) / tamanhoLote) * 100);
+    let eixoLucroPerc = historicoDiarioEQV.map(reg => (reg.lucro / capInicialFinanceiro) * 100);
     
     let traceEQV = { 
-        x: eixoX, y: eixoY_EQV, 
-        type: 'scatter', mode: 'lines+markers', 
-        name: 'EQV (%)', line: {color: '#0ff', width: 3}, marker: {size: 6},
-        hovertemplate: '%{x}<br>EQV: %{y:.2f}%<extra></extra>'
+        x: eixoX, y: eixoEQVPerc, name: 'Var. EQV %', 
+        type: 'scatter', mode: 'lines', 
+        line: {color: 'rgb(126,126,126)', width: 3} 
     };
-    
+
     let traceLucro = { 
-        x: eixoX, y: eixoY_Lucro, 
-        type: 'scatter', mode: 'lines+markers', 
-        name: 'Lucro (%)', line: {color: '#0f0', width: 3}, marker: {size: 6},
-        hovertemplate: '%{x}<br>Lucro: %{y:.2f}%<extra></extra>'
+        x: eixoX, y: eixoLucroPerc, name: 'Var. Lucro %', 
+        type: 'scatter', mode: 'lines', 
+        line: {color: 'rgb(0, 191, 255)', width: 2} 
     };
     
     Plotly.newPlot('grafico-modal-eqv', [traceEQV, traceLucro], { 
         paper_bgcolor: '#0a0a0a', plot_bgcolor: '#0a0a0a', 
-        margin: { t: 30, r: 30, b: 50, l: 50 },
-        xaxis: { color: 'rgb(126,126,126)', gridcolor: 'rgb(50,50,50)', tickangle: -45 },
-        yaxis: { color: 'rgb(126,126,126)', gridcolor: 'rgb(50,50,50)', ticksuffix: '%' },
-        showlegend: true,
-        legend: { font: { color: '#fff', size: 10 }, orientation: 'h', y: 1.15 }
-    });
+        margin: { t: 30, r: 30, b: 50, l: 60 },
+        xaxis: { color: 'rgb(126,126,126)', gridcolor: 'rgb(90,90,90)', tickangle: -45 },
+        yaxis: { 
+            color: 'rgb(126,126,126)', gridcolor: 'rgb(90,90,90)', 
+            title: 'Variação (%)', ticksuffix: '%' 
+        }
+    }, { responsive: true });
 }
 
 function fecharGavetaDiaria() {
