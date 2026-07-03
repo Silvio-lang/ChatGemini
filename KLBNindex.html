@@ -123,6 +123,11 @@
             </div>
         </div>
 
+<div class="painel1" style="display: flex; justify-content: center; align-items: center; width: 100%;">
+    <label style="margin: 5px; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 5px;">
+        <input type="checkbox" id="req-hora-cheia"> Apenas Hora Cheia (:00)
+    </label>
+</div>
         <div class="painel">
             <h3 style="font-size:0.8rem; margin-top: 1px; margin-bottom: 1px; text-align: center;">FECHAMENTO AUTOMÁTICO</h3>
             <div class="auto-row">
@@ -332,8 +337,6 @@ function renderizarHistoricoTela() {
     function calcularDelay(nivel) {
         return Math.max(10, Math.round(1000 * Math.pow(0.954, nivel - 1) + 5));
     }
-
-
 function prepararDados() {
     const klbnRaw = DADOS_HISTORICOS.klbn;
     const suzbRaw = DADOS_HISTORICOS.suzb;
@@ -344,10 +347,13 @@ function prepararDados() {
     saldoFinanceiro = 0;
     primeiroTrade = true;
     
+    totalPregoes = 0; 
     let diaAtual = null, multDesteDia = 1, ultimaHoraCheia = null;
+    const diasComPregao = new Set();
 
     for (let i = 0; i < klbnRaw.length; i++) {
-        const dataHora = klbnRaw[i][0], precoKLBN = klbnRaw[i][1];
+        const dataHora = klbnRaw[i][0];
+        const precoKLBN = klbnRaw[i][1];
         const itemSUZB = mapSuzb.get(dataHora);
         if (itemSUZB === undefined) continue;
         const precoSUZB = itemSUZB[1];
@@ -355,16 +361,26 @@ function prepararDados() {
         const [dataPura, horaFull] = dataHora.split(' ');
         const horaCheia = horaFull.split(':')[0];
 
-        // Inicialização do primeiro registro do histórico
         if (diaAtual === null) {
             diaAtual = dataPura;
             multDesteDia = precoKLBN / precoSUZB;
+            diasComPregao.add(dataPura);
         }
 
-        // Identificação da virada de dia para controle do índice do simulador
         if (dataPura !== diaAtual) {
             if (indiceSegundoDia === 0) indiceSegundoDia = blocosHoras.length;
+            
+            if (dadosTratados.length > 0) {
+                let ultimoDoDiaAnterior = dadosTratados[dadosTratados.length - 1];
+                let multFechamento = ultimoDoDiaAnterior.klbn / ultimoDoDiaAnterior.suzb_real;
+                ultimoDoDiaAnterior.mult = multFechamento;
+                ultimoDoDiaAnterior.suzb_adj = ultimoDoDiaAnterior.suzb_real * multFechamento;
+                ultimoDoDiaAnterior.diff = 0;
+            }
+
             diaAtual = dataPura;
+            multDesteDia = precoKLBN / precoSUZB;
+            diasComPregao.add(dataPura);
         }
 
         if (horaCheia !== ultimaHoraCheia) {
@@ -372,23 +388,22 @@ function prepararDados() {
             ultimaHoraCheia = horaCheia;
         }
 
-        // --- MECANISMO PREDITIVO REPOSICIONADO ---
-        // Antecipa o cálculo para que o último minuto de hoje já receba a união das linhas
-        if (i + 1 < klbnRaw.length) {
-            const proximaDataPura = klbnRaw[i + 1][0].split(' ')[0];
-            if (proximaDataPura !== dataPura) {
-                multDesteDia = precoKLBN / precoSUZB;
-            }
-        }
+        // Aplicamos a tara de compensação: subtraímos os 2 dias iniciais de histórico
+        let contagemRelativa = diasComPregao.size - 2;
+        if (contagemRelativa < 0) contagemRelativa = 0;
 
-        // Alimenta a matriz com o multiplicador calibrado em tempo de execução
         dadosTratados.push({ 
             time: dataHora, dataPura: dataPura, klbn: precoKLBN, 
             suzb_real: precoSUZB, suzb_adj: precoSUZB * multDesteDia, 
             diff: ((precoKLBN / (precoSUZB * multDesteDia)) - 1) * 100, 
-            mult: multDesteDia 
+            mult: multDesteDia,
+            numPregao: contagemRelativa
         });
     }
+
+    // O total exibido no final também desconta os dias de preparação do lookback
+    totalPregoes = diasComPregao.size - 2;
+    if (totalPregoes < 0) totalPregoes = 0;
 
     horaAtualIdx = Math.min(indiceSegundoDia, blocosHoras.length - 1); 
     document.getElementById('days-count-display').innerText = '0';
@@ -605,204 +620,227 @@ function executarTrade(tipo, motivo = "") {
         document.body.removeChild(link);
     }
 
-    function atualizarGrafico() {
-        if (dadosTratados.length === 0) return;
-        
-        const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
-        
-        const lookback = 28;
-        let maxH = atual.klbn;
-        for (let i = 1; i <= lookback; i++) {
-            const hIdx = horaAtualIdx - i;
-            if (hIdx < 0) break;
-            const htmlData = dadosTratados[blocosHoras[hIdx].globalIdx];
-            if (htmlData.klbn > maxH) maxH = htmlData.klbn;
-        }
-        const condFall = ((maxH - atual.klbn) / maxH) * 100 >= parseFloat(document.getElementById('buy-auto-fall').value);
-
-        const baseDiff = parseFloat(document.getElementById('buy-auto-diff').value);
-        const multLote = parseFloat(document.getElementById('buy-auto-mult').value);
-        const lotePadrao = parseInt(document.getElementById('trade-qty').value) || 1000;
-        const numLotes = Math.max(0, posicaoTotal / lotePadrao);
-        const diffAlvo = baseDiff * Math.pow(multLote, numLotes);
-        const condDiff = atual.diff <= diffAlvo;  // atual.diff <= baseDiff
-
-        let condSuzb = false;
-        if (horaAtualIdx > 0) {
-            const suzbPrev = dadosTratados[blocosHoras[horaAtualIdx-1].globalIdx].suzb_real;
-            condSuzb = ((atual.suzb_real - suzbPrev) / suzbPrev) * 100 >= parseFloat(document.getElementById('buy-auto-suzb').value);
-        }
-
-        document.getElementById('calculated-diff-trigger').innerText = `(AJUSTADO: ${diffAlvo.toFixed(2)}%)   `;
-
-        let diasDesejados = parseInt(document.getElementById('days-window-select').value) || 20;
-        // Calibração síncrona: definimos o início recuando a quantidade exata de blocos correspondente aos dias da janela
-        // Sabendo que cada dia de pregão tem aproximadamente 8 a 9 blocos de horas
-        let totalBlocosDesejados = diasDesejados * 8;
-        let inicio = Math.max(0, horaAtualIdx - totalBlocosDesejados);
-        
-        inicio = Math.max(0, inicio, indiceSegundoDia - 1);
-        inicio = Math.max(0, inicio, indiceSegundoDia - 1);
-
-        let xArr = [], yK = [], yS = [], tArr = [];
-        let divisoresDia = [];
-        let ticksHorizontais = [];
-
-        for (let h = inicio; h <= horaAtualIdx; h++) {
-            const iStart = blocosHoras[h].globalIdx, iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1].globalIdx : dadosTratados.length;
-            const iFin = iStart + (h === horaAtualIdx ? minutoNaHora : (iNext - iStart - 1));
-            if (iFin >= dadosTratados.length) continue;
-            
-            xArr.push(h); 
-            yK.push(dadosTratados[iFin].klbn); 
-            yS.push(dadosTratados[iFin].suzb_adj); 
-            const itemFin = dadosTratados[iFin];
-            const labelHora = itemFin.is_abertura ? "09:59" : itemFin.time.split(' ')[1].substring(0, 5);
-            tArr.push(labelHora);
-
-            if (h < horaAtualIdx && h + 1 < blocosHoras.length && blocosHoras[h].data !== blocosHoras[h+1].data) {
-                divisoresDia.push({ type: 'line', xref: 'x', yref: 'paper', x0: h + 0.2, x1: h + 0.2, y0: 0, y1: 1, line: { color: '#444', width: 2, dash: 'dashdot' } });
-            }
-            if (iStart === blocosHoras[h].globalIdx && (h === 0 || blocosHoras[h].data !== blocosHoras[h-1].data)) {
-                 const partesData = blocosHoras[h].data.split('-');
-                 ticksHorizontais.push({ val: h, label: `${partesData[2]}/${partesData[1]}` });
-            }
-        }
-
-// Determina a quantidade real de blocos que a janela de dias desejada representa
-        const totalBlocosNaJanela = horaAtualIdx - inicio;
-        const larguraJanelaSincrona = Math.max(totalBlocosNaJanela, (parseInt(document.getElementById('days-window-select').value) || 20) * 8);
-
-        Plotly.react('plotly-chart', [
-            { 
-                x: xArr, 
-                y: yK, 
-                text: tArr,
-                mode: 'lines+markers', 
-                name: 'KLBN11', 
-                line: {color: '#0ff', width: 3}, 
-                marker: {size: 5},
-                hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
-            },
-            { 
-                x: xArr, 
-                y: yS, 
-                text: tArr,
-                mode: 'lines+markers', 
-                name: 'SUZB3 (Adj)', 
-                line: {color: '#fa0', width: 1.5}, 
-                marker: {size: 3},
-                hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
-            }
-        ],
-          {
-            paper_bgcolor: '#000', plot_bgcolor: '#000', margin: { t: 30, r: 10, b: 30, l: 40 },
-            showlegend: true, legend: { font: { color: '#0f0', size: 10 }, orientation: 'h', y: 1.15 },
-            xaxis: { 
-                color: '#0f0', 
-                gridcolor: '#030', 
-                // Modificado: O eixo acompanha a hora atual de forma síncrona, eliminando o efeito estilingue
-                range: [inicio, inicio + larguraJanelaSincrona],
-                tickmode: 'array', 
-                tickvals: ticksHorizontais.map(t => t.val), 
-                ticktext: ticksHorizontais.map(t => t.label) 
-            },
-            yaxis: { color: '#0f0', gridcolor: '#030', autorange: true, hoverformat: '.2f' },
-            shapes: divisoresDia
-        });
-
-        const [dataPura, horaFull] = atual.time.split(' ');
-        const [ano, mes, dia] = dataPura.split('-');
-        document.getElementById('data-hora-display').innerText = `${dia}/${mes}/${ano} ${horaFull.substring(0, 5)}`;
-        
-        if (playInterval && refDataInicio) {
-            document.getElementById('days-count-display').innerText = Math.floor((new Date(atual.dataPura) - refDataInicio) / 86400000) + 1;
-        }
-
-        document.getElementById('diff-display').innerText = atual.diff.toFixed(2) + '%';
-        document.getElementById('diff-display').className = 'quadro-valor ' + (atual.diff < 0 ? 'negativo' : '');
-        document.getElementById('v-mult').innerText = atual.mult.toFixed(4);
-        document.getElementById('pos-qty-display').innerText = posicaoTotal;
-        document.getElementById('pos-qty-display').className = 'quadro-valor ' + (posicaoTotal < 0 ? 'negativo' : 'destaque-azul');
-        document.getElementById('avg-price-display').innerText = precoMedio.toFixed(2);
-
-        let lucroAberto = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (posicaoTotal < 0 ? (precoMedio - atual.klbn) * Math.abs(posicaoTotal) : 0);
-        if (posicaoTotal !== 0) {
-            ultimoLucroRegistrado = lucroAberto; 
-        }
-
-        const openProfitEl = document.getElementById('pnl-real-display');
-        if (openProfitEl) {
-            let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
-                                (motivoParadaReal === "LUCRO R$" ? ultimoLucroRegistrado : 0.00);
-            openProfitEl.innerText = lucroExibicao.toFixed(2);
-            openProfitEl.className = 'quadro-valor ' + (lucroExibicao < 0 ? 'negativo' : '');
-        }
-
-        document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
-        document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
-        
-        let pf = perdasBrutas === 0 ? (ganhosBrutos > 0 ? ganhosBrutos : 0.00) : (ganhosBrutos / perdasBrutas);
-        document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
-        document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
-        
-        document.getElementById('trade-count-display').innerText = totalTrades;
-        
-        const wr = totalTrades === 0 ? 0 : (tradesVencedores / totalTrades * 100);
-        document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
-        document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
-
-        if (playInterval && refPrecoInicio) {
-            const lucroAcao = (atual.klbn - refPrecoInicio) * 1000;
-            const lucroAcaoEl = document.getElementById('lucro-acao-display');
-            if (lucroAcaoEl) {
-                lucroAcaoEl.innerText = lucroAcao.toFixed(2);
-                lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
-            }
-        }
-
-const tamanhoLote = parseInt(document.getElementById('trade-qty').value) || 900;
-const eqvCap = (posicaoTotal === 0 && saldoFinanceiro === 0) ? tamanhoLote : (posicaoTotal + (saldoFinanceiro / atual.klbn));
-        document.getElementById('eqv-cap-display').innerText = Math.round(eqvCap);
-
-// Extrai apenas a data pura (ex: "2024-03-15") do registro atual
-const dataHoje = atual.time.split(' ')[0]; 
-
-if (playInterval) {
-    let registroDia = historicoDiarioEQV.find(reg => reg.data === dataHoje);
-
-    if (registroDia) {
-        registroDia.valor = Math.round(eqvCap);
-        registroDia.lucro = lucroAcumulado; 
-        registroDia.preco = atual.klbn; // Guarda o preço atual para recalibração
-    } else {
-        historicoDiarioEQV.push({ 
-            data: dataHoje, 
-            valor: Math.round(eqvCap), 
-            lucro: lucroAcumulado,
-            preco: atual.klbn // Registra o preço de partida do novo dia
-        });
+ function atualizarGrafico() {
+    if (dadosTratados.length === 0) return;
+    
+    const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
+    
+    const lookback = 28;
+    let maxH = atual.klbn;
+    for (let i = 1; i <= lookback; i++) {
+        const hIdx = horaAtualIdx - i;
+        if (hIdx < 0) break;
+        const htmlData = dadosTratados[blocosHoras[hIdx].globalIdx];
+        if (htmlData.klbn > maxH) maxH = htmlData.klbn;
     }
-}
- if (playInterval) {
-            let mandatoryConditions = [];
-            if (document.getElementById('buy-req-fall').checked) mandatoryConditions.push(condFall);
-            if (document.getElementById('buy-req-diff').checked) mandatoryConditions.push(condDiff);
-            if (document.getElementById('buy-req-suzb').checked) mandatoryConditions.push(condSuzb);
+    const condFall = ((maxH - atual.klbn) / maxH) * 100 >= parseFloat(document.getElementById('buy-auto-fall').value);
 
-            const allMandatoryTrue = mandatoryConditions.every(c => c === true);
-            const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
+    const baseDiff = parseFloat(document.getElementById('buy-auto-diff').value);
+    const multLote = parseFloat(document.getElementById('buy-auto-mult').value);
+    const lotePadrao = parseInt(document.getElementById('trade-qty').value) || 1000;
+    const numLotes = Math.max(0, posicaoTotal / lotePadrao);
+    const diffAlvo = baseDiff * Math.pow(multLote, numLotes);
+    const condDiff = atual.diff <= diffAlvo;  // atual.diff <= baseDiff
 
-            if (allMandatoryTrue && anyConditionTrue) {
-                motivoParadaReal = "Compra Automática";
-                executarTrade('compra');
-                return; 
-            } else {
-                document.getElementById('trade-status').innerText = `AUTO EM ESPERA...`;
+    let condSuzb = false;
+    if (horaAtualIdx > 0) {
+        const suzbPrev = dadosTratados[blocosHoras[horaAtualIdx-1].globalIdx].suzb_real;
+        condSuzb = ((atual.suzb_real - suzbPrev) / suzbPrev) * 100 >= parseFloat(document.getElementById('buy-auto-suzb').value);
+    }
+
+    document.getElementById('calculated-diff-trigger').innerText = `(AJUSTADO: ${diffAlvo.toFixed(2)}%)   `;
+
+    let diasDesejados = parseInt(document.getElementById('days-window-select').value) || 20;
+    let totalBlocosDesejados = diasDesejados * 8;
+    let inicio = Math.max(0, horaAtualIdx - totalBlocosDesejados);
+    
+    inicio = Math.max(0, inicio, indiceSegundoDia - 1);
+    inicio = Math.max(0, inicio, indiceSegundoDia - 1);
+
+    let xArr = [], yK = [], yS = [], tArr = [];
+    let divisoresDia = [];
+    let ticksHorizontais = [];
+
+    for (let h = inicio; h <= horaAtualIdx; h++) {
+        const iStart = blocosHoras[h].globalIdx, iNext = (h + 1 < blocosHoras.length) ? blocosHoras[h+1].globalIdx : dadosTratados.length;
+        const iFin = iStart + (h === horaAtualIdx ? minutoNaHora : (iNext - iStart - 1));
+        if (iFin >= dadosTratados.length) continue;
+        
+        xArr.push(h); 
+        yK.push(dadosTratados[iFin].klbn); 
+        yS.push(dadosTratados[iFin].suzb_adj); 
+        const itemFin = dadosTratados[iFin];
+        const labelHora = itemFin.is_abertura ? "09:59" : itemFin.time.split(' ')[1].substring(0, 5);
+        tArr.push(labelHora);
+
+        if (h < horaAtualIdx && h + 1 < blocosHoras.length && blocosHoras[h].data !== blocosHoras[h+1].data) {
+            divisoresDia.push({ type: 'line', xref: 'x', yref: 'paper', x0: h + 0.2, x1: h + 0.2, y0: 0, y1: 1, line: { color: '#444', width: 2, dash: 'dashdot' } });
+        }
+        if (iStart === blocosHoras[h].globalIdx && (h === 0 || blocosHoras[h].data !== blocosHoras[h-1].data)) {
+             const partesData = blocosHoras[h].data.split('-');
+             ticksHorizontais.push({ val: h, label: `${partesData[2]}/${partesData[1]}` });
+        }
+    }
+
+    const totalBlocosNaJanela = horaAtualIdx - inicio;
+    const larguraJanelaSincrona = Math.max(totalBlocosNaJanela, (parseInt(document.getElementById('days-window-select').value) || 20) * 8);
+
+    Plotly.react('plotly-chart', [
+        { 
+            x: xArr, 
+            y: yK, 
+            text: tArr,
+            mode: 'lines+markers', 
+            name: 'KLBN11', 
+            line: {color: '#0ff', width: 3}, 
+            marker: {size: 5},
+            hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
+        },
+        { 
+            x: xArr, 
+            y: yS, 
+            text: tArr,
+            mode: 'lines+markers', 
+            name: 'SUZB3 (Adj)', 
+            line: {color: '#fa0', width: 1.5}, 
+            marker: {size: 3},
+            hovertemplate: '%{text} - %{y:.2f}<extra></extra>'
+        }
+    ],
+      {
+        paper_bgcolor: '#000', plot_bgcolor: '#000', margin: { t: 30, r: 10, b: 30, l: 40 },
+        showlegend: true, legend: { font: { color: '#0f0', size: 10 }, orientation: 'h', y: 1.15 },
+        xaxis: { 
+            color: '#0f0', 
+            gridcolor: '#030', 
+            range: [inicio, inicio + larguraJanelaSincrona],
+            tickmode: 'array', 
+            tickvals: ticksHorizontais.map(t => t.val), 
+            ticktext: ticksHorizontais.map(t => t.label) 
+        },
+        yaxis: { color: '#0f0', gridcolor: '#030', autorange: true, hoverformat: '.2f' },
+        shapes: divisoresDia
+      });
+
+    const [dataPura, horaFull] = atual.time.split(' ');
+    const [ano, mes, dia] = dataPura.split('-');
+    document.getElementById('data-hora-display').innerText = `${dia}/${mes}/${ano} ${horaFull.substring(0, 5)}`;
+    
+// --- CIRCUITO DE CONTAGEM DE PREGÕES REVISADO E BLINDADO ---
+        if (playInterval) {
+            if (window.refPregaoInicio === undefined || window.refPregaoInicio === null) {
+                window.refPregaoInicio = atual.numPregao;
             }
+            const pregoesPassados = atual.numPregao - window.refPregaoInicio;
+            document.getElementById('days-count-display').innerText = pregoesPassados.toString();
+        } else {
+            window.refPregaoInicio = null;
+            document.getElementById('days-count-display').innerText = "0";
         }
 
-        if (posicaoTotal !== 0) {
+
+    document.getElementById('diff-display').innerText = atual.diff.toFixed(2) + '%';
+    document.getElementById('diff-display').className = 'quadro-valor ' + (atual.diff < 0 ? 'negativo' : '');
+    document.getElementById('v-mult').innerText = atual.mult.toFixed(4);
+    document.getElementById('pos-qty-display').innerText = posicaoTotal;
+    document.getElementById('pos-qty-display').className = 'quadro-valor ' + (posicaoTotal < 0 ? 'negativo' : 'destaque-azul');
+    document.getElementById('avg-price-display').innerText = precoMedio.toFixed(2);
+
+    let lucroAberto = (posicaoTotal > 0) ? (atual.klbn - precoMedio) * posicaoTotal : (posicaoTotal < 0 ? (precoMedio - atual.klbn) * Math.abs(posicaoTotal) : 0);
+    if (posicaoTotal !== 0) {
+        ultimoLucroRegistrado = lucroAberto; 
+    }
+
+    const openProfitEl = document.getElementById('pnl-real-display');
+    if (openProfitEl) {
+        let lucroExibicao = (posicaoTotal !== 0) ? lucroAberto : 
+                            (motivoParadaReal === "LUCRO R$" ? ultimoLucroRegistrado : 0.00);
+        openProfitEl.innerText = lucroExibicao.toFixed(2);
+        openProfitEl.className = 'quadro-valor ' + (lucroExibicao < 0 ? 'negativo' : '');
+    }
+
+    document.getElementById('total-profit-display').innerText = lucroAcumulado.toFixed(2);
+    document.getElementById('total-profit-display').className = 'quadro-valor ' + (lucroAcumulado < 0 ? 'negativo' : '');
+    
+    let pf = perdasBrutas === 0 ? (ganhosBrutos > 0 ? ganhosBrutos : 0.00) : (ganhosBrutos / perdasBrutas);
+    document.getElementById('profit-factor-display').innerText = pf.toFixed(2);
+    document.getElementById('profit-factor-display').className = 'quadro-valor ' + (pf < 1 && pf > 0 ? 'negativo' : (pf >= 1 ? 'destaque-laranja' : ''));
+    
+    document.getElementById('trade-count-display').innerText = totalTrades;
+    
+    const wr = totalTrades === 0 ? 0 : (tradesVencedores / totalTrades * 100);
+    document.getElementById('win-rate-display').innerText = wr.toFixed(0) + '%';
+    document.getElementById('win-rate-display').className = 'quadro-valor ' + (wr < 50 ? 'negativo' : '');
+
+    if (playInterval && refPrecoInicio) {
+        const lucroAcao = (atual.klbn - refPrecoInicio) * 1000;
+        const lucroAcaoEl = document.getElementById('lucro-acao-display');
+        if (lucroAcaoEl) {
+            lucroAcaoEl.innerText = lucroAcao.toFixed(2);
+            lucroAcaoEl.className = 'quadro-valor ' + (lucroAcao < 0 ? 'negativo' : '');
+        }
+    }
+
+    const tamanhoLote = parseInt(document.getElementById('trade-qty').value) || 900;
+    const eqvCap = (posicaoTotal === 0 && saldoFinanceiro === 0) ? tamanhoLote : (posicaoTotal + (saldoFinanceiro / atual.klbn));
+    document.getElementById('eqv-cap-display').innerText = Math.round(eqvCap);
+
+    const dataHoje = atual.time.split(' ')[0]; 
+
+    if (playInterval) {
+        let registroDia = historicoDiarioEQV.find(reg => reg.data === dataHoje);
+
+        if (registroDia) {
+            registroDia.valor = Math.round(eqvCap);
+            registroDia.lucro = lucroAcumulado; 
+            registroDia.preco = atual.klbn; 
+        } else {
+            historicoDiarioEQV.push({ 
+                data: dataHoje, 
+                valor: Math.round(eqvCap), 
+                lucro: lucroAcumulado,
+                preco: atual.klbn 
+            });
+        }
+    }
+
+    // --- NOVO SENSOR: VALIDAÇÃO DE HORA CHEIA ---
+    const stringHorario = atual.time.split(' ')[1]; 
+    const minutoAtualStr = stringHorario.split(':')[1]; 
+    const condHoraCheia = (minutoAtualStr === "00");
+
+    // --- BLOCO 1: GATILHO DE COMPRA AUTOMÁTICA ---
+    if (playInterval) {
+        let mandatoryConditions = [];
+        if (document.getElementById('buy-req-fall').checked) mandatoryConditions.push(condFall);
+        if (document.getElementById('buy-req-diff').checked) mandatoryConditions.push(condDiff);
+        if (document.getElementById('buy-req-suzb').checked) mandatoryConditions.push(condSuzb);
+        
+        if (document.getElementById('req-hora-cheia').checked) {
+            mandatoryConditions.push(condHoraCheia);
+        }
+
+        const allMandatoryTrue = mandatoryConditions.every(c => c === true);
+        const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
+
+        if (allMandatoryTrue && anyConditionTrue) {
+            motivoParadaReal = "Compra Automática";
+            executarTrade('compra');
+            return; 
+        } else {
+            document.getElementById('trade-status').innerText = `AUTO EM ESPERA...`;
+        }
+    }
+
+    // --- BLOCO 2: GATILHO DE VENDA / ENCERRAMENTO AUTOMÁTICO ---
+    if (posicaoTotal !== 0) {
+        // Trava opcional de saída: se o checkbox de hora cheia estiver ativo, impede o processamento se não for minuto :00
+        let permitirSaidaPorHorario = true;
+        if (document.getElementById('req-hora-cheia').checked) {
+            permitirSaidaPorHorario = condHoraCheia;
+        }
+
+        if (permitirSaidaPorHorario) {
             const chkProfit = document.getElementById('chk-auto-profit').checked, valProfit = parseFloat(document.getElementById('val-auto-profit').value);
             const chkDiffHigh = document.getElementById('chk-auto-diff-high').checked, valDiffHigh = parseFloat(document.getElementById('val-auto-diff-high').value);
             let trigger = false, mot = "";
@@ -811,92 +849,102 @@ if (playInterval) {
             else if (chkDiffHigh && atual.diff >= valDiffHigh) { trigger = true; mot = "DIVERG.%"; }
             
             if (trigger) { 
+                let mandatoryConditions = [];
+                if (document.getElementById('buy-req-fall').checked) mandatoryConditions.push(condFall);
+                if (document.getElementById('buy-req-diff').checked) mandatoryConditions.push(condDiff);
+                if (document.getElementById('buy-req-suzb').checked) mandatoryConditions.push(condSuzb);
+
+                const allMandatoryTrue = mandatoryConditions.every(c => c === true);
+                const anyConditionTrue = [condFall, condDiff, condSuzb].some(c => c === true);
+                const isBuySignalActive = allMandatoryTrue && anyConditionTrue;
+
+                if (mot === "LUCRO R$" && isBuySignalActive) {
+                    document.getElementById('trade-status').innerText = "HOLD: SINAL DE COMPRA ATIVO";
+                    return; 
+                }
+
                 motivoParadaReal = mot;
                 executarTrade('venda', mot); 
                 return;
             }
         }
-
-try {
-            let campoInputCompra = document.getElementById('buy-auto-diff');
-            let campoInputVendaPercentual = document.getElementById('val-auto-diff-high'); 
-            let campoInputVendaLucro = document.getElementById('val-auto-profit'); 
-            
-            let campoInputFall = document.getElementById('buy-auto-fall');
-            let campoInputSuzb = document.getElementById('buy-auto-suzb');
-
-            let gatilhoVendaBase = campoInputVendaPercentual ? parseFloat(campoInputVendaPercentual.value) || 0 : 0;
-            let gatilhoLucroAlvo = campoInputVendaLucro ? parseFloat(campoInputVendaLucro.value) || 0 : 0;
-
-            // 1. Sinalização Visual: Divergência de Compra
-            if (campoInputCompra) {
-                if (condDiff) {
-                    campoInputCompra.style.setProperty('background-color', '#ff0000', 'important');
-                    campoInputCompra.style.setProperty('color', '#ffffff', 'important');
-                    campoInputCompra.style.fontWeight = "bold";
-                } else {
-                    campoInputCompra.style.setProperty('background-color', '#000000', 'important');
-                    campoInputCompra.style.setProperty('color', '#00ff00', 'important');
-                    campoInputCompra.style.fontWeight = "normal";
-                }
-            }
-
-            // 2. Sinalização Visual: Queda Máxima KLBN
-            if (campoInputFall) {
-                if (condFall) {
-                    campoInputFall.style.setProperty('background-color', '#ff0000', 'important');
-                    campoInputFall.style.setProperty('color', '#ffffff', 'important');
-                    campoInputFall.style.fontWeight = "bold";
-                } else {
-                    campoInputFall.style.setProperty('background-color', '#000000', 'important');
-                    campoInputFall.style.setProperty('color', '#00ff00', 'important');
-                    campoInputFall.style.fontWeight = "normal";
-                }
-            }
-
-            // 3. Sinalização Visual: Alta Mínima SUZB
-            if (campoInputSuzb) {
-                if (condSuzb) {
-                    campoInputSuzb.style.setProperty('background-color', '#ff0000', 'important');
-                    campoInputSuzb.style.setProperty('color', '#ffffff', 'important');
-                    campoInputSuzb.style.fontWeight = "bold";
-                } else {
-                    campoInputSuzb.style.setProperty('background-color', '#000000', 'important');
-                    campoInputSuzb.style.setProperty('color', '#00ff00', 'important');
-                    campoInputSuzb.style.fontWeight = "normal";
-                }
-            }
-
-            // 4. Sinalização Visual: Venda por Percentual
-            if (campoInputVendaPercentual) {
-                if (atual.diff >= gatilhoVendaBase) {
-                    campoInputVendaPercentual.style.setProperty('background-color', '#ff0000', 'important');
-                    campoInputVendaPercentual.style.setProperty('color', '#ffffff', 'important');
-                    campoInputVendaPercentual.style.fontWeight = "bold";
-                } else {
-                    campoInputVendaPercentual.style.setProperty('background-color', '#000000', 'important');
-                    campoInputVendaPercentual.style.setProperty('color', '#00ff00', 'important');
-                    campoInputVendaPercentual.style.fontWeight = "normal";
-                }
-            }
-
-            // 5. Sinalização Visual: Venda por Alvo de Lucro R$
-            if (campoInputVendaLucro) {
-                let lucroParaAvaliar = (posicaoTotal !== 0) ? lucroAberto : ultimoLucroRegistrado;
-                if (lucroParaAvaliar >= gatilhoLucroAlvo && (posicaoTotal !== 0 || motivoParadaReal === "ALVO RENDIMENTO R$")) {
-                    campoInputVendaLucro.style.setProperty('background-color', '#ff0000', 'important');
-                    campoInputVendaLucro.style.setProperty('color', '#ffffff', 'important');
-                    campoInputVendaLucro.style.fontWeight = "bold";
-                } else {
-                    campoInputVendaLucro.style.setProperty('background-color', '#000000', 'important');
-                    campoInputVendaLucro.style.setProperty('color', '#00ff00', 'important');
-                    campoInputVendaLucro.style.fontWeight = "normal";
-                }
-            }
-        } catch (e) {
-            console.log("Erro no grampo visual nativo:", e.message);
-        }
     }
+
+    try {
+        let campoInputCompra = document.getElementById('buy-auto-diff');
+        let campoInputVendaPercentual = document.getElementById('val-auto-diff-high'); 
+        let campoInputVendaLucro = document.getElementById('val-auto-profit'); 
+        
+        let campoInputFall = document.getElementById('buy-auto-fall');
+        let campoInputSuzb = document.getElementById('buy-auto-suzb');
+
+        let gatilhoVendaBase = campoInputVendaPercentual ? parseFloat(campoInputVendaPercentual.value) || 0 : 0;
+        let gatilhoLucroAlvo = campoInputVendaLucro ? parseFloat(campoInputVendaLucro.value) || 0 : 0;
+
+        if (campoInputCompra) {
+            if (condDiff) {
+                campoInputCompra.style.setProperty('background-color', '#ff0000', 'important');
+                campoInputCompra.style.setProperty('color', '#ffffff', 'important');
+                campoInputCompra.style.fontWeight = "bold";
+            } else {
+                campoInputCompra.style.setProperty('background-color', '#000000', 'important');
+                campoInputCompra.style.setProperty('color', '#00ff00', 'important');
+                campoInputCompra.style.fontWeight = "normal";
+            }
+        }
+
+        if (campoInputFall) {
+            if (condFall) {
+                campoInputFall.style.setProperty('background-color', '#ff0000', 'important');
+                campoInputFall.style.setProperty('color', '#ffffff', 'important');
+                campoInputFall.style.fontWeight = "bold";
+            } else {
+                campoInputFall.style.setProperty('background-color', '#000000', 'important');
+                campoInputFall.style.setProperty('color', '#00ff00', 'important');
+                campoInputFall.style.fontWeight = "normal";
+            }
+        }
+
+        if (campoInputSuzb) {
+            if (condSuzb) {
+                campoInputSuzb.style.setProperty('background-color', '#ff0000', 'important');
+                campoInputSuzb.style.setProperty('color', '#ffffff', 'important');
+                campoInputSuzb.style.fontWeight = "bold";
+            } else {
+                campoInputSuzb.style.setProperty('background-color', '#000000', 'important');
+                campoInputSuzb.style.setProperty('color', '#00ff00', 'important');
+                campoInputSuzb.style.fontWeight = "normal";
+            }
+        }
+
+        if (campoInputVendaPercentual) {
+            if (atual.diff >= gatilhoVendaBase) {
+                campoInputVendaPercentual.style.setProperty('background-color', '#ff0000', 'important');
+                campoInputVendaPercentual.style.setProperty('color', '#ffffff', 'important');
+                campoInputVendaPercentual.style.fontWeight = "bold";
+            } else {
+                campoInputVendaPercentual.style.setProperty('background-color', '#000000', 'important');
+                campoInputVendaPercentual.style.setProperty('color', '#00ff00', 'important');
+                campoInputVendaPercentual.style.fontWeight = "normal";
+            }
+        }
+
+        if (campoInputVendaLucro) {
+            let lucroParaAvaliar = (posicaoTotal !== 0) ? lucroAberto : ultimoLucroRegistrado;
+            if (lucroParaAvaliar >= gatilhoLucroAlvo && (posicaoTotal !== 0 || motivoParadaReal === "ALVO RENDIMENTO R$")) {
+                campoInputVendaLucro.style.setProperty('background-color', '#ff0000', 'important');
+                campoInputVendaLucro.style.setProperty('color', '#ffffff', 'important');
+                campoInputVendaLucro.style.fontWeight = "bold";
+            } else {
+                campoInputVendaLucro.style.setProperty('background-color', '#000000', 'important');
+                campoInputVendaLucro.style.setProperty('color', '#00ff00', 'important');
+                campoInputVendaLucro.style.fontWeight = "normal";
+            }
+        }
+    } catch (e) {
+        console.log("Erro no grampo visual nativo:", e.message);
+    }
+}
 
     function zerarTudo() {
         const atual = dadosTratados[blocosHoras[horaAtualIdx].globalIdx + minutoNaHora];
